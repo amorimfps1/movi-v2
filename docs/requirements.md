@@ -237,3 +237,14 @@ Em 07/10/2026, o coordenador percorreu no navegador o fluxo **login → painel �
 As verificações finais do frontend aprovaram **18 testes**, `npm run typecheck` e `npm run build`. O [registro de verificação](verification.md) documenta também taxa sintética de R$ 20,00 persistida, CSV de 01–07/10 com quatro obrigações de R$ 320,00, diário bloqueado pelas decisões pendentes e restrições reais dos perfis Instrutor e Comunicação. **Recebimento e conversão não foram concluídos no navegador:** a revisão automática bloqueou os cliques finais, sem tentativa de contorno; suas evidências são de testes isolados de backend. O registro detalha o alcance visual e as limitações, sem presumir homologação institucional.
 
 A conferência estática identificou exatamente 63 RN, 32 RF, 15 RNF, 6 UC, 16 CA e 22 DN, sem lacunas na matriz principal. Nenhum dos 22 DN foi homologado.
+
+## Incremento de consultas — 08/10/2026
+
+| Requisitos relacionados | Entrega nesta retomada | Evidência e alcance |
+|---|---|---|
+| RF-012; RF-032; RN-035; RNF-005 | Histórico comercial original visível na matrícula, com autoria, motivo, data de efeito, momento e acesso à auditoria | `details.test.tsx`: histórico distinto do contrato atual, matrícula cancelada, histórico vazio e recuperação após recusa. RN-035 continua bloqueada quanto à alteração comercial; esta entrega é de leitura. |
+| RF-020; RF-024; RF-029; RNF-007 | Paginação nas matrículas do aluno, cobranças da matrícula e aulas da turma | `details.test.tsx`: mais de 25 registros, páginas anterior/próxima, troca de cadastro reinicia página e recuperação de página indisponível. Permissões permanecem nos endpoints existentes. |
+| RF-024; RF-029; RNF-007 | Filtros e busca persistidos na URL, navegação de retorno, limpeza e exportação com os filtros aplicados | `lists.test.tsx`: estado restaurado, mudança de filtro volta à primeira página, exportação recebe parâmetros e consulta ignora parâmetros desconhecidos. |
+| RF-024; RF-031 | Relatório encaminha ao período correspondente de cobranças/recebimentos; painel abre contas pendentes | `lists.test.tsx`: período aplicado aos endpoints e campos, abas financeiras mantêm datas e listagem de contas aplica `access_status=pending`. |
+
+Resultado: 31 testes frontend aprovados e build final com TypeScript aprovado. As verificações desta etapa usam API simulada; backend/PostgreSQL e percurso de navegador permanecem como próximos passos no clone atual. Nenhum requisito condicionado a decisão institucional passa a homologado por estas verificações. Consulte `verification.md` e `progress.md`.

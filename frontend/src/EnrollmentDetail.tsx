@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ChevronLeft, Plus, ArrowUpRight, Ban, RefreshCw } from "lucide-react";
 import type { Enrollment, Eligibility, Page, RecordData } from "./types";
 import { useApi } from "./query";
+import { EnrollmentConditions } from "./EnrollmentConditions";
 import {
   Button,
   PageTitle,
@@ -12,16 +13,23 @@ import {
   Notice,
   Badge,
   Empty,
+  Pagination,
 } from "./ui";
 import { ActionForm } from "./forms";
 import { date, label, money, today } from "./format";
 export function EnrollmentDetail() {
   const { id } = useParams();
+  return <EnrollmentRecord key={id} id={id!} />;
+}
+function EnrollmentRecord({ id }: { id: string }) {
+  const [chargePage, setChargePage] = useState(1);
   const enrollment = useApi<Enrollment>(`enrollments/${id}/`);
   const eligibility = useApi<Eligibility>(
     `enrollments/${id}/eligibility/?on=${today()}`,
   );
-  const charges = useApi<Page<RecordData>>(`charges/?enrollment=${id}`);
+  const charges = useApi<Page<RecordData>>(
+    `charges/?enrollment=${id}&page=${chargePage}&page_size=25`,
+  );
   const [cancel, setCancel] = useState(false);
   const [notice, setNotice] = useState("");
   if (enrollment.isPending) return <Loading />;
@@ -59,44 +67,47 @@ export function EnrollmentDetail() {
       {notice && <Notice tone="success">{notice}</Notice>}
       <Journey step={state?.eligible ? 3 : 2} />
       <div className="detail-grid">
-        <section className="sheet">
-          <div className="section-heading">
-            <h2>Condições do vínculo</h2>
-            <Badge value={value.administrative_status} />
-          </div>
-          <dl className="details-list">
-            <div>
-              <dt>Turma</dt>
-              <dd>
-                <Link to={`/turmas/${value.class_group}`}>
-                  {value.class_name}
-                </Link>
-              </dd>
+        <div className="detail-column">
+          <section className="sheet">
+            <div className="section-heading">
+              <h2>Condições do vínculo</h2>
+              <Badge value={value.administrative_status} />
             </div>
-            <div>
-              <dt>Início</dt>
-              <dd>{date(value.start_date)}</dd>
+            <dl className="details-list">
+              <div>
+                <dt>Turma</dt>
+                <dd>
+                  <Link to={`/turmas/${value.class_group}`}>
+                    {value.class_name}
+                  </Link>
+                </dd>
+              </div>
+              <div>
+                <dt>Início</dt>
+                <dd>{date(value.start_date)}</dd>
+              </div>
+              <div>
+                <dt>Plano</dt>
+                <dd>{label(value.plan)}</dd>
+              </div>
+              <div>
+                <dt>Valor contratado</dt>
+                <dd>{money(value.amount)}</dd>
+              </div>
+              <div>
+                <dt>Tipo</dt>
+                <dd>{label(value.kind)}</dd>
+              </div>
+            </dl>
+            <div className="section-pad">
+              <Notice tone="warning">
+                Vigência, alterações comerciais, suspensão e renovação aguardam
+                política institucional. DN-004, DN-010 e DN-011.
+              </Notice>
             </div>
-            <div>
-              <dt>Plano</dt>
-              <dd>{label(value.plan)}</dd>
-            </div>
-            <div>
-              <dt>Valor contratado</dt>
-              <dd>{money(value.amount)}</dd>
-            </div>
-            <div>
-              <dt>Tipo</dt>
-              <dd>{label(value.kind)}</dd>
-            </div>
-          </dl>
-          <div className="section-pad">
-            <Notice tone="warning">
-              Vigência, alterações comerciais, suspensão e renovação aguardam
-              política institucional. DN-004, DN-010 e DN-011.
-            </Notice>
-          </div>
-        </section>
+          </section>
+          <EnrollmentConditions enrollmentId={id} />
+        </div>
         <div>
           <section className="sheet eligibility-sheet">
             <div className="section-heading">
@@ -134,7 +145,10 @@ export function EnrollmentDetail() {
               )}
             </div>
           </section>
-          <section className="sheet charges-sheet">
+          <section
+            className="sheet charges-sheet"
+            aria-label="Cobranças da matrícula"
+          >
             <div className="section-heading">
               <h2>Cobranças da matrícula</h2>
               <Link className="text-link" to={`/financeiro?enrollment=${id}`}>
@@ -145,7 +159,20 @@ export function EnrollmentDetail() {
             {charges.isPending ? (
               <Loading />
             ) : charges.error ? (
-              <ErrorNotice error={charges.error} />
+              <div className="section-pad">
+                <ErrorNotice error={charges.error} />
+                <Button
+                  variant="secondary"
+                  onClick={() => void charges.refetch()}
+                >
+                  Tentar carregar cobranças novamente
+                </Button>
+                {chargePage > 1 && (
+                  <Button variant="ghost" onClick={() => setChargePage(1)}>
+                    Voltar à primeira página
+                  </Button>
+                )}
+              </div>
             ) : !charges.data?.results.length ? (
               <Empty
                 title="Nenhuma cobrança registrada"
@@ -192,6 +219,16 @@ export function EnrollmentDetail() {
                 </table>
               </div>
             )}
+            {!charges.isPending &&
+              !charges.error &&
+              charges.data &&
+              (charges.data.count > 25 || chargePage > 1) && (
+                <Pagination
+                  page={chargePage}
+                  count={charges.data.count}
+                  onChange={setChargePage}
+                />
+              )}
           </section>
         </div>
       </div>

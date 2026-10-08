@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Plus,
@@ -41,19 +41,47 @@ export function ResourceList({
   beforeList?: React.ReactNode;
   eyebrow?: string;
 }) {
-  const [search, setSearch] = useState("");
   const feminine =
     spec.singular.endsWith("a") || spec.singular === "modalidade";
-  const [searchDraft, setSearchDraft] = useState("");
-  const [page, setPage] = useState(1);
-  const [urlParams] = useSearchParams();
-  const [filters, setFilters] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      ["enrollment", "class_group", "target_type", "target_id"]
-        .filter((key) => urlParams.has(key))
-        .map((key) => [key, urlParams.get(key)!]),
-    ),
+  const [urlParams, setUrlParams] = useSearchParams();
+  const filterKeys = [
+    "ordering",
+    ...(spec.filters?.map((filter) => filter.key) ?? []),
+    ...(spec.filterFields?.map((field) => field.key) ?? []),
+    ...(spec.endpoint === "enrollments/" ? ["student"] : []),
+  ];
+  const filters = Object.fromEntries(
+    filterKeys
+      .filter((key) => urlParams.get(key))
+      .map((key) => [key, urlParams.get(key)!]),
   );
+  const search = urlParams.get("search") || "";
+  const rawPage = Number(urlParams.get("page") || 1);
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const [searchDraft, setSearchDraft] = useState(search);
+  useEffect(() => setSearchDraft(search), [search]);
+  function changeQuery(changes: Record<string, string>, resetPage = true) {
+    const next = new URLSearchParams(
+      Object.fromEntries(
+        [...filterKeys, "search", "page"]
+          .filter((key) => urlParams.get(key))
+          .map((key) => [key, urlParams.get(key)!]),
+      ),
+    );
+    if (resetPage) next.delete("page");
+    Object.entries(changes).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    setUrlParams(next);
+  }
+  const setPage = (value: number) =>
+    changeQuery({ page: String(value) }, false);
+  const filtered =
+    !!search ||
+    Object.entries(filters).some(
+      ([key, value]) => key !== "ordering" && !!value,
+    );
   const [form, setForm] = useState<RecordData | "new" | null>(null);
   const [archive, setArchive] = useState<RecordData | null>(null);
   const [notice, setNotice] = useState("");
@@ -76,6 +104,7 @@ export function ResourceList({
   });
   const params = new URLSearchParams({
     page: String(page),
+    page_size: "25",
     search,
     ...filters,
   });
@@ -132,8 +161,7 @@ export function ResourceList({
             className="search-field"
             onSubmit={(event) => {
               event.preventDefault();
-              setPage(1);
-              setSearch(searchDraft);
+              changeQuery({ search: searchDraft });
             }}
           >
             <Search size={19} />
@@ -157,8 +185,7 @@ export function ResourceList({
                 key={filter.key}
                 value={filters[filter.key] || ""}
                 onChange={(event) => {
-                  setFilters({ ...filters, [filter.key]: event.target.value });
-                  setPage(1);
+                  changeQuery({ [filter.key]: event.target.value });
                 }}
               >
                 <option value="">{filter.label}: todos</option>
@@ -173,8 +200,7 @@ export function ResourceList({
               aria-label="Ordenação"
               value={filters.ordering || ""}
               onChange={(event) => {
-                setFilters({ ...filters, ordering: event.target.value });
-                setPage(1);
+                changeQuery({ ordering: event.target.value });
               }}
             >
               <option value="">Ordenação padrão</option>
@@ -185,6 +211,17 @@ export function ResourceList({
                 Ordem decrescente
               </option>
             </select>
+            {(filtered || filters.ordering) && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSearchDraft("");
+                  setUrlParams({});
+                }}
+              >
+                Limpar filtros
+              </Button>
+            )}
           </div>
         </div>
         {spec.filterFields && (
@@ -195,11 +232,7 @@ export function ResourceList({
                   <select
                     value={filters[field.key] || ""}
                     onChange={(event) => {
-                      setFilters({
-                        ...filters,
-                        [field.key]: event.target.value,
-                      });
-                      setPage(1);
+                      changeQuery({ [field.key]: event.target.value });
                     }}
                     disabled={
                       filterQueries[filterPaths.indexOf(field.lookup!)]
@@ -227,11 +260,7 @@ export function ResourceList({
                     min={field.min}
                     value={filters[field.key] || ""}
                     onChange={(event) => {
-                      setFilters({
-                        ...filters,
-                        [field.key]: event.target.value,
-                      });
-                      setPage(1);
+                      changeQuery({ [field.key]: event.target.value });
                     }}
                   />
                 )}
@@ -258,14 +287,14 @@ export function ResourceList({
         ) : !query.data?.results.length ? (
           <Empty
             title={
-              search
+              filtered
                 ? "Nenhum resultado encontrado"
                 : `Nenhum${feminine ? "a" : "o"} ${spec.singular} por aqui`
             }
             description={
               spec.readOnly
                 ? "Nenhum registro disponível no escopo ou nos filtros selecionados."
-                : search
+                : filtered
                   ? "Tente outro termo ou ajuste os filtros."
                   : `Cadastre ${feminine ? "a primeira" : "o primeiro"} ${spec.singular} para iniciar o acompanhamento.`
             }
@@ -394,8 +423,14 @@ export function ResourceList({
 }
 export function StudentDetail() {
   const { id } = useParams();
+  return <StudentRecord key={id} id={id!} />;
+}
+function StudentRecord({ id }: { id: string }) {
+  const [enrollmentPage, setEnrollmentPage] = useState(1);
   const student = useApi<Student>(`students/${id}/`);
-  const enrollments = useApi<Page<Enrollment>>(`enrollments/?student=${id}`);
+  const enrollments = useApi<Page<Enrollment>>(
+    `enrollments/?student=${id}&page=${enrollmentPage}&page_size=25`,
+  );
   const [editing, setEditing] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [success, setSuccess] = useState("");
@@ -472,7 +507,7 @@ export function StudentDetail() {
             </div>
           </dl>
         </section>
-        <section className="sheet">
+        <section className="sheet" aria-label="Matrículas e participação">
           <div className="section-heading">
             <div>
               <p className="eyebrow">PRÓXIMO PASSO</p>
@@ -485,7 +520,20 @@ export function StudentDetail() {
           {enrollments.isPending ? (
             <Loading />
           ) : enrollments.error ? (
-            <ErrorNotice error={enrollments.error} />
+            <div className="section-pad">
+              <ErrorNotice error={enrollments.error} />
+              <Button
+                variant="secondary"
+                onClick={() => void enrollments.refetch()}
+              >
+                Tentar carregar matrículas novamente
+              </Button>
+              {enrollmentPage > 1 && (
+                <Button variant="ghost" onClick={() => setEnrollmentPage(1)}>
+                  Voltar à primeira página
+                </Button>
+              )}
+            </div>
           ) : !enrollments.data?.results.length ? (
             <Empty
               title="Pronto para uma nova atividade"
@@ -525,6 +573,16 @@ export function StudentDetail() {
               ))}
             </div>
           )}
+          {!enrollments.isPending &&
+            !enrollments.error &&
+            enrollments.data &&
+            (enrollments.data.count > 25 || enrollmentPage > 1) && (
+              <Pagination
+                page={enrollmentPage}
+                count={enrollments.data.count}
+                onChange={setEnrollmentPage}
+              />
+            )}
         </section>
       </div>
       {editing && (
