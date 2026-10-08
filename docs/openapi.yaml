@@ -1,0 +1,3605 @@
+openapi: 3.0.3
+info:
+  title: MOVI+ API
+  version: 1.0.0
+paths:
+  /api/audit/:
+    get:
+      operationId: audit_list
+      parameters:
+      - in: query
+        name: action
+        schema:
+          type: string
+      - in: query
+        name: actor
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: target_id
+        schema:
+          type: string
+      - in: query
+        name: target_type
+        schema:
+          type: string
+      tags:
+      - audit
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditList'
+          description: ''
+  /api/audit/{id}/:
+    get:
+      operationId: audit_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este audit event.
+        required: true
+      tags:
+      - audit
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Audit'
+          description: ''
+  /api/auth/csrf/:
+    get:
+      operationId: auth_csrf_retrieve
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfToken'
+          description: ''
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResult'
+          description: ''
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/charges/:
+    get:
+      operationId: charges_list
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - enrollment_fee
+          - extra
+          - tuition
+        description: |-
+          * `tuition` - Mensalidade
+          * `enrollment_fee` - Taxa de matrícula
+          * `extra` - Outra receita
+      - in: query
+        name: competence
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: enrollment
+        schema:
+          type: integer
+      - in: query
+        name: enrollment__student
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - charges
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedChargeList'
+          description: ''
+    post:
+      operationId: charges_create
+      tags:
+      - charges
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Charge'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Charge'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Charge'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Charge'
+          description: ''
+  /api/charges/{id}/:
+    get:
+      operationId: charges_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este charge.
+        required: true
+      tags:
+      - charges
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Charge'
+          description: ''
+  /api/charges/{id}/receive/:
+    post:
+      operationId: charges_receive_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este charge.
+        required: true
+      tags:
+      - charges
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Receipt'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Receipt'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Receipt'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionError'
+          description: ''
+  /api/charges/generate/:
+    post:
+      operationId: charges_generate_create
+      tags:
+      - charges
+      security:
+      - cookieAuth: []
+      responses:
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionError'
+          description: ''
+  /api/classes/:
+    get:
+      operationId: classes_list
+      parameters:
+      - in: query
+        name: active
+        schema:
+          type: boolean
+      - in: query
+        name: allows_trial
+        schema:
+          type: boolean
+      - in: query
+        name: instructor
+        schema:
+          type: integer
+      - in: query
+        name: modality
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: room
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - classes
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedClassGroupList'
+          description: ''
+    post:
+      operationId: classes_create
+      tags:
+      - classes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClassGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClassGroup'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassGroup'
+          description: ''
+  /api/classes/{id}/:
+    get:
+      operationId: classes_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este class group.
+        required: true
+      tags:
+      - classes
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassGroup'
+          description: ''
+    put:
+      operationId: classes_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este class group.
+        required: true
+      tags:
+      - classes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClassGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClassGroup'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassGroup'
+          description: ''
+    patch:
+      operationId: classes_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este class group.
+        required: true
+      tags:
+      - classes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClassGroup'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClassGroup'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedClassGroup'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassGroup'
+          description: ''
+  /api/enrollments/:
+    get:
+      operationId: enrollments_list
+      parameters:
+      - in: query
+        name: administrative_status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - regular
+        description: |-
+          * `regular` - Regular
+          * `cancelled` - Cancelada
+      - in: query
+        name: class_group
+        schema:
+          type: integer
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - regular
+          - trial
+        description: |-
+          * `regular` - Comum
+          * `trial` - Experimental
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: plan
+        schema:
+          type: string
+          enum:
+          - monthly
+          - quarterly
+          - yearly
+        description: |-
+          * `monthly` - Mensal
+          * `quarterly` - Trimestral
+          * `yearly` - Anual
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: student
+        schema:
+          type: integer
+      tags:
+      - enrollments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEnrollmentList'
+          description: ''
+    post:
+      operationId: enrollments_create
+      tags:
+      - enrollments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+          description: ''
+  /api/enrollments/{id}/:
+    get:
+      operationId: enrollments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      tags:
+      - enrollments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+          description: ''
+    put:
+      operationId: enrollments_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      tags:
+      - enrollments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+          description: ''
+    patch:
+      operationId: enrollments_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      tags:
+      - enrollments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEnrollment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEnrollment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEnrollment'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+          description: ''
+  /api/enrollments/{id}/cancel/:
+    post:
+      operationId: enrollments_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      tags:
+      - enrollments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+          description: ''
+  /api/enrollments/{id}/conditions/:
+    get:
+      operationId: enrollments_conditions_list
+      parameters:
+      - in: query
+        name: administrative_status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - regular
+        description: |-
+          * `regular` - Regular
+          * `cancelled` - Cancelada
+      - in: query
+        name: class_group
+        schema:
+          type: integer
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - regular
+          - trial
+        description: |-
+          * `regular` - Comum
+          * `trial` - Experimental
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: plan
+        schema:
+          type: string
+          enum:
+          - monthly
+          - quarterly
+          - yearly
+        description: |-
+          * `monthly` - Mensal
+          * `quarterly` - Trimestral
+          * `yearly` - Anual
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: student
+        schema:
+          type: integer
+      tags:
+      - enrollments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedConditionList'
+          description: ''
+  /api/enrollments/{id}/eligibility/:
+    get:
+      operationId: enrollments_eligibility_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      - in: query
+        name: 'on'
+        schema:
+          type: string
+          format: date
+      tags:
+      - enrollments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Eligibility'
+          description: ''
+  /api/instructors/:
+    get:
+      operationId: instructors_list
+      parameters:
+      - in: query
+        name: active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: specialties
+        schema:
+          type: array
+          items:
+            type: integer
+        explode: true
+        style: form
+      tags:
+      - instructors
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInstructorList'
+          description: ''
+    post:
+      operationId: instructors_create
+      tags:
+      - instructors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Instructor'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Instructor'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Instructor'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instructor'
+          description: ''
+  /api/instructors/{id}/:
+    get:
+      operationId: instructors_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este instructor.
+        required: true
+      tags:
+      - instructors
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instructor'
+          description: ''
+    put:
+      operationId: instructors_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este instructor.
+        required: true
+      tags:
+      - instructors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Instructor'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Instructor'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Instructor'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instructor'
+          description: ''
+    patch:
+      operationId: instructors_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este instructor.
+        required: true
+      tags:
+      - instructors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInstructor'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInstructor'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInstructor'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instructor'
+          description: ''
+  /api/leads/:
+    get:
+      operationId: leads_list
+      parameters:
+      - in: query
+        name: interests
+        schema:
+          type: array
+          items:
+            type: integer
+        explode: true
+        style: form
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: source
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - contacting
+          - converted
+          - new
+          - not_converted
+          - waiting
+        description: |-
+          * `new` - Novo
+          * `contacting` - Em atendimento
+          * `waiting` - Aguardando retorno
+          * `converted` - Convertido
+          * `not_converted` - Não convertido
+      tags:
+      - leads
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLeadList'
+          description: ''
+    post:
+      operationId: leads_create
+      tags:
+      - leads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lead'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lead'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lead'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
+  /api/leads/{id}/:
+    get:
+      operationId: leads_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lead.
+        required: true
+      tags:
+      - leads
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
+    put:
+      operationId: leads_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lead.
+        required: true
+      tags:
+      - leads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lead'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lead'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lead'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
+    patch:
+      operationId: leads_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lead.
+        required: true
+      tags:
+      - leads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLead'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLead'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLead'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
+  /api/leads/{id}/convert/:
+    post:
+      operationId: leads_convert_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lead.
+        required: true
+      tags:
+      - leads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Convert'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Convert'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Convert'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+          description: ''
+  /api/lessons/:
+    get:
+      operationId: lessons_list
+      parameters:
+      - in: query
+        name: assigned_instructor
+        schema:
+          type: integer
+      - in: query
+        name: class_group
+        schema:
+          type: integer
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - completed
+          - scheduled
+        description: |-
+          * `scheduled` - Agendada
+          * `completed` - Realizada
+          * `cancelled` - Cancelada
+      tags:
+      - lessons
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLessonList'
+          description: ''
+    post:
+      operationId: lessons_create
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lesson'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lesson'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lesson'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
+  /api/lessons/{id}/:
+    get:
+      operationId: lessons_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lesson.
+        required: true
+      tags:
+      - lessons
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
+    put:
+      operationId: lessons_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lesson.
+        required: true
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lesson'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lesson'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lesson'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
+    patch:
+      operationId: lessons_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lesson.
+        required: true
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLesson'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLesson'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLesson'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
+  /api/lessons/{id}/attendance/:
+    get:
+      operationId: lessons_attendance_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lesson.
+        required: true
+      tags:
+      - lessons
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceHistory'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+          description: ''
+    post:
+      operationId: lessons_attendance_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lesson.
+        required: true
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceSubmission'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AttendanceSubmission'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AttendanceSubmission'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+          description: ''
+  /api/lessons/{id}/roster/:
+    get:
+      operationId: lessons_roster_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lesson.
+        required: true
+      tags:
+      - lessons
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Roster'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+          description: ''
+  /api/modalities/:
+    get:
+      operationId: modalities_list
+      parameters:
+      - in: query
+        name: active
+        schema:
+          type: boolean
+      - in: query
+        name: area
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - modalities
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedModalityList'
+          description: ''
+    post:
+      operationId: modalities_create
+      tags:
+      - modalities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Modality'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Modality'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Modality'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Modality'
+          description: ''
+  /api/modalities/{id}/:
+    get:
+      operationId: modalities_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este modality.
+        required: true
+      tags:
+      - modalities
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Modality'
+          description: ''
+    put:
+      operationId: modalities_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este modality.
+        required: true
+      tags:
+      - modalities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Modality'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Modality'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Modality'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Modality'
+          description: ''
+    patch:
+      operationId: modalities_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este modality.
+        required: true
+      tags:
+      - modalities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedModality'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedModality'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedModality'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Modality'
+          description: ''
+  /api/payments/:
+    get:
+      operationId: payments_list
+      parameters:
+      - in: query
+        name: charge
+        schema:
+          type: integer
+      - in: query
+        name: charge__category
+        schema:
+          type: string
+          enum:
+          - enrollment_fee
+          - extra
+          - tuition
+        description: |-
+          * `tuition` - Mensalidade
+          * `enrollment_fee` - Taxa de matrícula
+          * `extra` - Outra receita
+      - in: query
+        name: charge__enrollment
+        schema:
+          type: integer
+      - in: query
+        name: method
+        schema:
+          type: string
+          enum:
+          - card
+          - cash
+          - other
+          - pix
+          - transfer
+        description: |-
+          * `pix` - Pix
+          * `cash` - Dinheiro
+          * `card` - Cartão
+          * `transfer` - Transferência
+          * `other` - Outro
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - payments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPaymentList'
+          description: ''
+  /api/payments/{id}/:
+    get:
+      operationId: payments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment.
+        required: true
+      tags:
+      - payments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/policies/:
+    get:
+      operationId: policies_retrieve
+      tags:
+      - policies
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policies'
+          description: ''
+  /api/reports/export/:
+    get:
+      operationId: reports_export_retrieve
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: resource
+        schema:
+          type: string
+          enum:
+          - charges
+          - payments
+          - students
+      - in: query
+        name: search
+        schema:
+          type: string
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/reports/summary/:
+    get:
+      operationId: reports_summary_retrieve
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Summary'
+          description: ''
+  /api/students/:
+    get:
+      operationId: students_list
+      parameters:
+      - in: query
+        name: archived
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - students
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStudentList'
+          description: ''
+    post:
+      operationId: students_create
+      tags:
+      - students
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Student'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Student'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Student'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+          description: ''
+  /api/students/{id}/:
+    get:
+      operationId: students_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este student.
+        required: true
+      tags:
+      - students
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+          description: ''
+    put:
+      operationId: students_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este student.
+        required: true
+      tags:
+      - students
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Student'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Student'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Student'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+          description: ''
+    patch:
+      operationId: students_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este student.
+        required: true
+      tags:
+      - students
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStudent'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStudent'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStudent'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+          description: ''
+  /api/users/:
+    get:
+      operationId: users_list
+      parameters:
+      - in: query
+        name: access_status
+        schema:
+          type: string
+          enum:
+          - approved
+          - pending
+          - rejected
+        description: |-
+          * `pending` - Pendente
+          * `approved` - Aprovado
+          * `rejected` - Rejeitado
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - users
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: users_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{id}/add-role/:
+    post:
+      operationId: users_add_role_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessRole'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AccessRole'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AccessRole'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{id}/approve/:
+    post:
+      operationId: users_approve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessRoles'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AccessRoles'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AccessRoles'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{id}/reject/:
+    post:
+      operationId: users_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{id}/remove-role/:
+    post:
+      operationId: users_remove_role_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessRole'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AccessRole'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AccessRole'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+components:
+  schemas:
+    AccessRole:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRoleEnum'
+        instructor_id:
+          type: integer
+          minimum: 1
+      required:
+      - role
+    AccessRoles:
+      type: object
+      properties:
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserRoleEnum'
+        instructor_id:
+          type: integer
+          minimum: 1
+      required:
+      - roles
+    AccessStatusEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pendente
+        * `approved` - Aprovado
+        * `rejected` - Rejeitado
+    AdministrativeStatusEnum:
+      enum:
+      - regular
+      - cancelled
+      type: string
+      description: |-
+        * `regular` - Regular
+        * `cancelled` - Cancelada
+    AttendanceHistory:
+      type: object
+      properties:
+        lesson:
+          type: integer
+        status:
+          type: string
+        marks:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceHistoryMark'
+        definition:
+          type: string
+      required:
+      - definition
+      - lesson
+      - marks
+      - status
+    AttendanceHistoryMark:
+      type: object
+      properties:
+        enrollment:
+          type: integer
+        student_name:
+          type: string
+        present:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - enrollment
+      - present
+      - student_name
+    AttendanceMark:
+      type: object
+      properties:
+        enrollment:
+          type: integer
+          minimum: 1
+        present:
+          type: boolean
+      required:
+      - enrollment
+      - present
+    AttendanceSubmission:
+      type: object
+      properties:
+        version:
+          type: string
+          maxLength: 512
+        marks:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceMark'
+      required:
+      - marks
+      - version
+    Audit:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+          nullable: true
+        actor_name:
+          type: string
+          readOnly: true
+        action:
+          type: string
+          readOnly: true
+        target_type:
+          type: string
+          readOnly: true
+        target_id:
+          type: string
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        metadata:
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - actor
+      - actor_name
+      - created_at
+      - id
+      - metadata
+      - reason
+      - target_id
+      - target_type
+    Cancel:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - reason
+    CategoryEnum:
+      enum:
+      - tuition
+      - enrollment_fee
+      - extra
+      type: string
+      description: |-
+        * `tuition` - Mensalidade
+        * `enrollment_fee` - Taxa de matrícula
+        * `extra` - Outra receita
+    Charge:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        enrollment:
+          type: integer
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        competence:
+          type: string
+          format: date
+          nullable: true
+        due_date:
+          type: string
+          format: date
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        description:
+          type: string
+          maxLength: 240
+        student_name:
+          type: string
+          readOnly: true
+        class_name:
+          type: string
+          readOnly: true
+        received:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - category
+      - class_name
+      - created_at
+      - due_date
+      - enrollment
+      - id
+      - received
+      - status
+      - student_name
+    ClassGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        modality:
+          type: integer
+        modality_name:
+          type: string
+          readOnly: true
+        instructor:
+          type: integer
+        instructor_name:
+          type: string
+          readOnly: true
+        weekdays: {}
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        room:
+          type: string
+          maxLength: 120
+        age_range:
+          type: string
+          maxLength: 120
+        capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+        active:
+          type: boolean
+        allows_trial:
+          type: boolean
+      required:
+      - capacity
+      - end_time
+      - id
+      - instructor
+      - instructor_name
+      - modality
+      - modality_name
+      - name
+      - room
+      - start_time
+    Condition:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        enrollment:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        effective_on:
+          type: string
+          format: date
+        plan:
+          type: string
+          maxLength: 12
+        actor:
+          type: integer
+        reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor
+      - amount
+      - created_at
+      - effective_on
+      - enrollment
+      - id
+      - plan
+    Convert:
+      type: object
+      properties:
+        student_id:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+          maxLength: 2000
+    CsrfToken:
+      type: object
+      properties:
+        csrfToken:
+          type: string
+      required:
+      - csrfToken
+    DecisionError:
+      type: object
+      properties:
+        detail:
+          type: string
+        decisions:
+          type: array
+          items:
+            type: string
+      required:
+      - decisions
+      - detail
+    DecisionResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        decisions:
+          type: array
+          items:
+            type: string
+      required:
+      - decisions
+      - detail
+    Eligibility:
+      type: object
+      properties:
+        eligible:
+          type: boolean
+          nullable: true
+        status:
+          type: string
+        reason:
+          type: string
+        decisions:
+          type: array
+          items:
+            type: string
+      required:
+      - decisions
+      - eligible
+      - reason
+      - status
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        student:
+          type: integer
+        class_group:
+          type: integer
+        student_name:
+          type: string
+          readOnly: true
+        class_name:
+          type: string
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+        plan:
+          $ref: '#/components/schemas/PlanEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        administrative_status:
+          allOf:
+          - $ref: '#/components/schemas/AdministrativeStatusEnum'
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        eligibility:
+          allOf:
+          - $ref: '#/components/schemas/Eligibility'
+          readOnly: true
+      required:
+      - administrative_status
+      - amount
+      - class_group
+      - class_name
+      - created_at
+      - eligibility
+      - id
+      - plan
+      - start_date
+      - student
+      - student_name
+    Instructor:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 30
+        active:
+          type: boolean
+        specialties:
+          type: array
+          items:
+            type: integer
+        user:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - id
+      - name
+      - user
+    KindEnum:
+      enum:
+      - regular
+      - trial
+      type: string
+      description: |-
+        * `regular` - Comum
+        * `trial` - Experimental
+    Lead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        cpf:
+          type: string
+          maxLength: 18
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 30
+        source:
+          type: string
+          maxLength: 120
+        status:
+          $ref: '#/components/schemas/LeadStatusEnum'
+        interests:
+          type: array
+          items:
+            type: integer
+        notes:
+          type: string
+        student:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - student
+    LeadStatusEnum:
+      enum:
+      - new
+      - contacting
+      - waiting
+      - converted
+      - not_converted
+      type: string
+      description: |-
+        * `new` - Novo
+        * `contacting` - Em atendimento
+        * `waiting` - Aguardando retorno
+        * `converted` - Convertido
+        * `not_converted` - Não convertido
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        class_group:
+          type: integer
+        class_name:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+        assigned_instructor:
+          type: integer
+          nullable: true
+        instructor_name:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/LessonStatusEnum'
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - class_group
+      - class_name
+      - created_at
+      - date
+      - id
+      - instructor_name
+      - name
+    LessonStatusEnum:
+      enum:
+      - scheduled
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `scheduled` - Agendada
+        * `completed` - Realizada
+        * `cancelled` - Cancelada
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 128
+      required:
+      - email
+      - password
+    LogoutResult:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    MethodEnum:
+      enum:
+      - pix
+      - cash
+      - card
+      - transfer
+      - other
+      type: string
+      description: |-
+        * `pix` - Pix
+        * `cash` - Dinheiro
+        * `card` - Cartão
+        * `transfer` - Transferência
+        * `other` - Outro
+    Modality:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        area:
+          type: string
+          maxLength: 120
+        default_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        active:
+          type: boolean
+      required:
+      - default_price
+      - id
+      - name
+    PaginatedAuditList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Audit'
+    PaginatedChargeList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Charge'
+    PaginatedClassGroupList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClassGroup'
+    PaginatedConditionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+    PaginatedEnrollmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enrollment'
+    PaginatedInstructorList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Instructor'
+    PaginatedLeadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lead'
+    PaginatedLessonList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lesson'
+    PaginatedModalityList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Modality'
+    PaginatedPaymentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+    PaginatedStudentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Student'
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    PatchedClassGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        modality:
+          type: integer
+        modality_name:
+          type: string
+          readOnly: true
+        instructor:
+          type: integer
+        instructor_name:
+          type: string
+          readOnly: true
+        weekdays: {}
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        room:
+          type: string
+          maxLength: 120
+        age_range:
+          type: string
+          maxLength: 120
+        capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+        active:
+          type: boolean
+        allows_trial:
+          type: boolean
+    PatchedEnrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        student:
+          type: integer
+        class_group:
+          type: integer
+        student_name:
+          type: string
+          readOnly: true
+        class_name:
+          type: string
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+        plan:
+          $ref: '#/components/schemas/PlanEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        administrative_status:
+          allOf:
+          - $ref: '#/components/schemas/AdministrativeStatusEnum'
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        eligibility:
+          allOf:
+          - $ref: '#/components/schemas/Eligibility'
+          readOnly: true
+    PatchedInstructor:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 30
+        active:
+          type: boolean
+        specialties:
+          type: array
+          items:
+            type: integer
+        user:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedLead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        cpf:
+          type: string
+          maxLength: 18
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 30
+        source:
+          type: string
+          maxLength: 120
+        status:
+          $ref: '#/components/schemas/LeadStatusEnum'
+        interests:
+          type: array
+          items:
+            type: integer
+        notes:
+          type: string
+        student:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedLesson:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        class_group:
+          type: integer
+        class_name:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+        assigned_instructor:
+          type: integer
+          nullable: true
+        instructor_name:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/LessonStatusEnum'
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedModality:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 120
+        area:
+          type: string
+          maxLength: 120
+        default_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        active:
+          type: boolean
+    PatchedStudent:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        cpf:
+          type: string
+          maxLength: 18
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 30
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        address:
+          type: string
+        notes:
+          type: string
+        archived:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        charge:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        paid_on:
+          type: string
+          format: date
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        reference:
+          type: string
+          maxLength: 160
+        actor:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        student_name:
+          type: string
+          readOnly: true
+        category:
+          type: string
+          readOnly: true
+      required:
+      - actor
+      - amount
+      - category
+      - charge
+      - created_at
+      - id
+      - method
+      - paid_on
+      - student_name
+    PendingDecision:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        impact:
+          type: string
+      required:
+      - id
+      - impact
+      - title
+    PlanEnum:
+      enum:
+      - monthly
+      - quarterly
+      - yearly
+      type: string
+      description: |-
+        * `monthly` - Mensal
+        * `quarterly` - Trimestral
+        * `yearly` - Anual
+    Policies:
+      type: object
+      properties:
+        pending:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingDecision'
+        approved:
+          type: array
+          items:
+            type: string
+        demo:
+          type: boolean
+        timezone:
+          type: string
+      required:
+      - approved
+      - demo
+      - pending
+      - timezone
+    Reason:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - reason
+    Receipt:
+      type: object
+      properties:
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        paid_on:
+          type: string
+          format: date
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        reference:
+          type: string
+          maxLength: 160
+      required:
+      - amount
+      - method
+      - paid_on
+    Register:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 128
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+      required:
+      - email
+      - first_name
+      - password
+    Roster:
+      type: object
+      properties:
+        lesson:
+          type: integer
+        version:
+          type: string
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/RosterParticipant'
+        excluded:
+          type: array
+          items:
+            $ref: '#/components/schemas/RosterExcluded'
+        decisions:
+          type: array
+          items:
+            type: string
+      required:
+      - decisions
+      - excluded
+      - lesson
+      - participants
+      - version
+    RosterExcluded:
+      type: object
+      properties:
+        enrollment:
+          type: integer
+        reason:
+          type: string
+        decisions:
+          type: array
+          items:
+            type: string
+      required:
+      - decisions
+      - enrollment
+      - reason
+    RosterParticipant:
+      type: object
+      properties:
+        enrollment:
+          type: integer
+        student_name:
+          type: string
+      required:
+      - enrollment
+      - student_name
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        cpf:
+          type: string
+          maxLength: 18
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 30
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        address:
+          type: string
+        notes:
+          type: string
+        archived:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+    Summary:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        demo:
+          type: boolean
+        timezone:
+          type: string
+        pending_decisions:
+          type: array
+          items:
+            type: string
+        students:
+          type: integer
+        enrollments:
+          type: integer
+        classes:
+          type: integer
+        pending_users:
+          type: integer
+        leads:
+          type: integer
+        conversions:
+          type: integer
+        converted_enrollments:
+          type: integer
+        received:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        expected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        outstanding:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        overdue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        categories:
+          type: object
+          additionalProperties:
+            type: string
+            format: decimal
+            pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        base:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        final_payout:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        financial_definition:
+          type: string
+        commercial_definition:
+          type: string
+      required:
+      - demo
+      - end
+      - pending_decisions
+      - start
+      - timezone
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        first_name:
+          type: string
+          readOnly: true
+          title: Primeiro nome
+        last_name:
+          type: string
+          readOnly: true
+          title: Último nome
+        access_status:
+          allOf:
+          - $ref: '#/components/schemas/AccessStatusEnum'
+          readOnly: true
+        roles:
+          readOnly: true
+      required:
+      - access_status
+      - email
+      - first_name
+      - id
+      - last_name
+      - roles
+    UserRoleEnum:
+      enum:
+      - communication
+      - coordinator
+      - instructor
+      - secretary
+      type: string
+      description: |-
+        * `communication` - communication
+        * `coordinator` - coordinator
+        * `instructor` - instructor
+        * `secretary` - secretary
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
