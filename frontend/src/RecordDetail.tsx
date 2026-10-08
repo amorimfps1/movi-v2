@@ -18,13 +18,18 @@ import {
   Journey,
   Badge,
   Empty,
+  Pagination,
 } from "./ui";
 import { date, money, label } from "./format";
 import { useAuth, isAdmin } from "./auth";
 export function RecordDetail({ spec }: { spec: ResourceSpec }) {
+  const { id } = useParams();
+  return <RecordDetails key={`${spec.endpoint}${id}`} spec={spec} id={id!} />;
+}
+function RecordDetails({ spec, id }: { spec: ResourceSpec; id: string }) {
   const { user } = useAuth();
   const admin = isAdmin(user);
-  const { id } = useParams();
+  const [lessonPage, setLessonPage] = useState(1);
   const query = useApi<RecordData>(`${spec.endpoint}${id}/`);
   const [editing, setEditing] = useState(false);
   const [converting, setConverting] = useState(false);
@@ -44,7 +49,7 @@ export function RecordDetail({ spec }: { spec: ResourceSpec }) {
     })),
   });
   const classes = useApi<Page<RecordData>>(
-    `lessons/?class_group=${id}`,
+    `lessons/?class_group=${id}&page=${lessonPage}&page_size=25`,
     spec.endpoint === "classes/",
   );
   if (query.isPending) return <Loading />;
@@ -175,7 +180,7 @@ export function RecordDetail({ spec }: { spec: ResourceSpec }) {
             </section>
           )}
           {spec.endpoint === "classes/" && (
-            <section className="sheet">
+            <section className="sheet" aria-label="Encontros desta turma">
               <div className="section-heading">
                 <h2>Encontros desta turma</h2>
                 <Link className="text-link" to={`/aulas?class_group=${id}`}>
@@ -185,7 +190,20 @@ export function RecordDetail({ spec }: { spec: ResourceSpec }) {
               {classes.isPending ? (
                 <Loading />
               ) : classes.error ? (
-                <ErrorNotice error={classes.error} />
+                <div className="section-pad">
+                  <ErrorNotice error={classes.error} />
+                  <Button
+                    variant="secondary"
+                    onClick={() => void classes.refetch()}
+                  >
+                    Tentar carregar aulas novamente
+                  </Button>
+                  {lessonPage > 1 && (
+                    <Button variant="ghost" onClick={() => setLessonPage(1)}>
+                      Voltar à primeira página
+                    </Button>
+                  )}
+                </div>
               ) : !classes.data?.results.length ? (
                 <Empty
                   title="O próximo encontro começa aqui"
@@ -208,6 +226,16 @@ export function RecordDetail({ spec }: { spec: ResourceSpec }) {
                   ))}
                 </div>
               )}
+              {!classes.isPending &&
+                !classes.error &&
+                classes.data &&
+                (classes.data.count > 25 || lessonPage > 1) && (
+                  <Pagination
+                    page={lessonPage}
+                    count={classes.data.count}
+                    onChange={setLessonPage}
+                  />
+                )}
               <div className="section-pad">
                 <Notice tone="warning">
                   Capacidade, conflitos de sala e de instrutor seguem políticas
