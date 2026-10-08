@@ -2,7 +2,11 @@
 
 Este é o ponto de entrada para continuar o desenvolvimento. Requisitos e decisões estão em `requirements.md` e `decisions.md`; evidências de execução estão em `verification.md`.
 
-## Etapa atual — 08/10/2026
+## Etapa em andamento — ambiente e integração — 08/10/2026
+
+Retomada a partir do commit `18f7cfd`, na branch `trabalho`, inicialmente sem alterações locais. Objetivo: preparar Python/PostgreSQL neste clone, executar verificações backend e validar em navegador as consultas entregues. Resultados e próximos passos serão atualizados ao concluir a etapa. Definições de planos, vencimento e primeiro mês foram solicitadas ao usuário; trabalho técnico independente continua enquanto essas regras permanecem pendentes.
+
+## Etapa anterior — consultas — 08/10/2026
 
 **Concluída nesta etapa:** consulta de histórico e de registros vinculados, conforme RF-012, RF-024, RF-029, RF-031 e RF-032. O projeto completo continua com as dependências institucionais abaixo.
 
