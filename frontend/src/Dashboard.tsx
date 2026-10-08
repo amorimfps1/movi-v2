@@ -193,7 +193,10 @@ export function Dashboard() {
             <section className="operation-note">
               <p className="eyebrow">CUIDADOS DA SECRETARIA</p>
               <h2>O que pede atenção</h2>
-              <Link to="/acessos" className="pending-link">
+              <Link
+                to="/acessos?access_status=pending"
+                className="pending-link"
+              >
                 <span className="pending-icon">
                   <UsersRound size={19} />
                 </span>

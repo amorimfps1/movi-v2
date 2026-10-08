@@ -53,3 +53,25 @@ Interface orientada à gestão de alunos, matrículas e leads. Paleta substituí
 Frontend: 18 testes aprovados em seis arquivos, 12,11s, exit 0; typecheck e build aprovados. Após corrigir o contexto de posicionamento da tabela e a visibilidade do menu móvel, o build foi repetido como verificação final. Nenhum teste espelho de paleta/texto foi adicionado.
 
 Navegador: mouse em campo de pesquisa e abertura do diálogo de lead sem outline; Tab restaura outline solid de 2px no próximo controle. Em 390×844, página com clientWidth=scrollWidth=375px; tabela de 669px restrita a área de 333px, sem rolagem horizontal da página. Menu móvel abre e fecha; fechado, seus links ficam fora da árvore acessível. Nenhum erro de console capturado. Evidências: `screenshots/tema-leads-desktop.jpg` e `screenshots/tema-leads-mobile.jpg`. Não houve envio de formulários ou alteração de dados de negócio nesta revisão.
+
+## Retomada no clone — histórico, paginação e filtros — 08/10/2026
+
+Ambiente desta execução: Windows, Node 24.15.0 e dependências do lockfile instaladas com `npm ci --no-audit --no-fund`. Neste clone não existem `.env`, `.venv` ou PostgreSQL portátil em `.local`; o ambiente descrito nas seções anteriores pertence à sessão original. README e `progress.md` passaram a distinguir os dois ambientes.
+
+Entregas:
+
+- Matrícula consulta `GET enrollments/{id}/conditions/` e mostra condições originais, autoria, motivo e datas; conta responsável e auditoria têm atalhos. Histórico vazio não é preenchido artificialmente com os valores atuais do contrato. Falha de leitura mantém a ficha disponível e oferece nova tentativa.
+- Matrículas do aluno, cobranças da matrícula e aulas da turma têm navegação paginada de 25 registros. Trocar o cadastro reinicia a página; falhas oferecem nova tentativa e retorno ao início.
+- Busca, filtros, ordenação e página das listagens ficam na URL, com restauração ao voltar no navegador. Alterar filtros reinicia a página; limpar filtros remove a seleção. Parâmetros não reconhecidos são ignorados e página inválida é tratada como página 1. Exportação recebe os filtros aplicados à consulta.
+- Relatórios abrem cobranças e recebimentos com o período consultado. Abas financeiras mantêm essas datas e os indicadores gerais consultam o mesmo período. Painel encaminha solicitações de acesso com `access_status=pending`.
+
+Verificações efetivamente executadas:
+
+- `npm.cmd run test`: **31 testes em oito arquivos aprovados**, duração 12,52 s, exit 0. São 18 cenários anteriores e 13 novos. Testes de componentes usam respostas simuladas da API.
+- `npm.cmd run typecheck`: exit 0. O build final também executou `tsc -b` com sucesso.
+- `npm.cmd run build`: exit 0; Vite 7.3.7, 1.657 módulos, compilação Vite em 7,55 s.
+- `git diff --check`: nenhuma inconsistência de whitespace.
+
+As tentativas iniciais de npm/esbuild encontraram restrições de cache/acesso a diretórios do ambiente isolado; instalação, testes e build foram concluídos com execução local autorizada. Uma falha inicial no teste novo de moeda foi corrigida no comparador de texto para reconhecer o espaço da formatação brasileira; a suíte final acima passou integralmente.
+
+**Limites desta etapa:** nenhuma migração ou alteração backend; suíte PostgreSQL não repetida neste clone. Não foi realizado novo percurso integrado nem inspeção visual em navegador. As evidências visuais anteriores não validam estas novas telas. Regras DN e `BUSINESS_APPROVALS` permaneceram sem alteração. Próximo ponto de retomada em `progress.md`.
