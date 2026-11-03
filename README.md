@@ -4,6 +4,8 @@ Aplicação de gestão de alunos, matrículas e leads em React/TypeScript, Djang
 
 **Estado:** núcleo cadastral e financeiro avulso integrado; operação definitiva e homologação dependem das decisões institucionais listadas em [docs/decisions.md](docs/decisions.md). As políticas pendentes aparecem na aplicação e retornam HTTP 409 quando impedem uma ação. Uma aprovação configurada por ID não inventa o conteúdo de uma política.
 
+**Retomada do desenvolvimento:** consulte [docs/progress.md](docs/progress.md) para a última entrega, verificações atuais e próximo passo. A etapa de 08/10/2026 acrescentou histórico comercial na matrícula, paginação de vínculos e preservação de filtros e períodos nas consultas; 31 testes frontend aprovados e build concluído.
+
 ## Executar localmente
 
 Requer Python 3.11+, Node 22.12+ e PostgreSQL 16 (ou Docker para o banco). Os comandos abaixo usam PowerShell na raiz do projeto.
@@ -31,9 +33,11 @@ Abra [MOVI+ local](http://127.0.0.1:5173). O Vite encaminha `/api/` ao Django. A
 
 Se já possui PostgreSQL, crie banco e usuário e ajuste `DATABASE_URL`; Docker é opcional. `compose.yaml` contém somente o banco e um volume persistente. Comandos de recriação/apagamento de volume não fazem parte da inicialização.
 
-## Ambiente preparado nesta sessão
+## Ambiente local da sessão original
 
-Foi preparado PostgreSQL portátil oficial em `.local/postgresql-win/pgsql`, com cluster **exclusivo de demonstração** em `.local/pgdata`, escutando apenas `127.0.0.1:55432`. `.env` local aponta a esse banco e habilita `DEMO_MODE=true`; esses arquivos são ignorados pelo Git. Os binários não são parte do código distribuído. A alternativa reproduzível normal é Docker ou instalação PostgreSQL própria.
+Na sessão original foi preparado PostgreSQL portátil oficial em `.local/postgresql-win/pgsql`, com cluster **exclusivo de demonstração** em `.local/pgdata`, escutando apenas `127.0.0.1:55432`. Naquele ambiente, `.env` apontava a esse banco com `DEMO_MODE=true`; esses arquivos são ignorados pelo Git. Os binários não são parte do código distribuído. A alternativa reproduzível normal é Docker ou instalação PostgreSQL própria.
+
+**Clone atual:** na retomada de 08/10/2026, `.env`, `.venv` e `.local` estavam ausentes. As dependências frontend foram instaladas com `npm ci`; backend e banco precisam da preparação descrita em “Executar localmente”. Os comandos de PostgreSQL portátil abaixo se aplicam somente quando esses arquivos locais existirem.
 
 Com o banco ativo e as dependências instaladas, este comando inicia a interface e a API em segundo plano, sem depender de manter os terminais abertos:
 

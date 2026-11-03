@@ -96,8 +96,11 @@ export function Reports() {
                       <p className="eyebrow">FINANCEIRO</p>
                       <h2>Obrigações e valores recebidos</h2>
                     </div>
-                    <Link className="text-link" to="/financeiro">
-                      Abrir registros <ArrowUpRight size={16} />
+                    <Link
+                      className="text-link"
+                      to={`/financeiro?${new URLSearchParams(period)}`}
+                    >
+                      Abrir cobranças <ArrowUpRight size={16} />
                     </Link>
                   </div>
                   <div className="report-financial-main">
@@ -105,6 +108,12 @@ export function Reports() {
                       <span>Recebido no período</span>
                       <strong>{money(query.data.received)}</strong>
                       <small>Recebimentos pela data de pagamento</small>
+                      <Link
+                        className="text-link"
+                        to={`/recebimentos?${new URLSearchParams(period)}`}
+                      >
+                        Abrir recebimentos <ArrowUpRight size={16} />
+                      </Link>
                     </div>
                     <dl>
                       <div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
   Wallet,
@@ -71,10 +71,18 @@ export function ReceiveForm({
   );
 }
 export function Finance({ payments = false }: { payments?: boolean }) {
+  const [urlParams] = useSearchParams();
+  const summaryStart = urlParams.get("start") || monthStart();
+  const summaryEnd = urlParams.get("end") || today();
+  const periodQuery = new URLSearchParams(
+    ["start", "end"]
+      .filter((key) => urlParams.get(key))
+      .map((key) => [key, urlParams.get(key)!]),
+  ).toString();
   const [receiving, setReceiving] = useState<RecordData | null>(null);
   const [success, setSuccess] = useState("");
   const summary = useApi<Summary>(
-    `reports/summary/?start=${monthStart()}&end=${today()}`,
+    `reports/summary/?${new URLSearchParams({ start: summaryStart, end: summaryEnd })}`,
   );
   return (
     <>
@@ -101,7 +109,7 @@ export function Finance({ payments = false }: { payments?: boolean }) {
           <>
             <nav className="section-tabs" aria-label="Rotinas financeiras">
               <Link
-                to="/financeiro"
+                to={`/financeiro${periodQuery ? `?${periodQuery}` : ""}`}
                 className={
                   !payments ? "section-tab section-tab--active" : "section-tab"
                 }
@@ -109,7 +117,7 @@ export function Finance({ payments = false }: { payments?: boolean }) {
                 Cobranças
               </Link>
               <Link
-                to="/recebimentos"
+                to={`/recebimentos${periodQuery ? `?${periodQuery}` : ""}`}
                 className={
                   payments ? "section-tab section-tab--active" : "section-tab"
                 }
@@ -148,7 +156,8 @@ export function Finance({ payments = false }: { payments?: boolean }) {
               </div>
             </section>
             <p className="period-note finance-period">
-              Período de {date(monthStart())} a {date(today())}.{" "}
+              Indicadores gerais de {date(summaryStart)} a {date(summaryEnd)}. A
+              lista abaixo usa os filtros selecionados.{" "}
               <Link to="/relatorios">Consultar outras datas e definições</Link>
             </p>
             <ErrorNotice error={summary.error} />

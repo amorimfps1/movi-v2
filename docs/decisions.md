@@ -1,6 +1,15 @@
 # Decisões institucionais pendentes
 
-Data: 07/10/2026. Fonte: especificação v1.0, seção 13. **Responsável institucional não informado; nenhuma decisão homologada.** Base é referência histórica candidata a aceite, não aprovação. Todas as decisões abaixo continuam pendentes.
+Fonte: especificação v1.0, seção 13. Levantamento inicial em 07/10/2026; definições financeiras recebidas do usuário em 08/10/2026, registradas abaixo. A matriz indica decisões completas ainda pendentes; definições parciais não encerram todos os aspectos de uma DN.
+
+## Definições confirmadas pelo usuário — 08/10/2026
+
+- **Valor dos planos (DN-004):** o valor informado é a mensalidade, inclusive para planos trimestral e anual; não representa o total de três ou doze meses.
+- **Dia de vencimento (DN-004):** o dia do primeiro pagamento fica fixo para os próximos vencimentos. Exemplo confirmado: primeiro pagamento em 10/10, pagamento atrasado em 15/11, próximo vencimento em 10/12.
+- **Primeiro período (DN-004/DN-005):** mensalidade integral, cobrindo um mês a partir do primeiro pagamento; não há proporcionalidade até o fim do mês nesse primeiro período.
+- **Responsável:** usuário solicitante nesta conversa; identificação institucional adicional não fornecida. Alcance: definições acima para desenvolvimento. Não autorizam automaticamente demais políticas, carência, renovação, trancamento ou geração arbitrária.
+- **Critérios de validação a implementar:** manter valor mensal nos três planos; atraso não muda o dia fixo; primeiro pagamento no meio do mês inicia período integral.
+- **Ainda necessário:** convenção para dias 29/30/31 em meses curtos; geração e vencimento antes do primeiro pagamento; horizonte de geração e renovação; limite final de cada plano; tratamento de cobertura em quitação atrasada. DN-004/005/006 continuam abertas até completar essas definições e implementar os critérios.
 
 `BUSINESS_APPROVALS` inicia vazio. O registro de uma aprovação deve conter ID, decisão detalhada, responsável, data, alcance, exceções e critérios de validação. A configuração só pode mudar por instrução expressa do usuário; ID isolado não substitui política detalhada. Overrides de teste não são aprovação e não devem ser usados como configuração operacional.
 

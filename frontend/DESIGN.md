@@ -1,5 +1,11 @@
 # Direção MOVI+
 
+## Checkpoint — consultas e histórico — 08/10/2026
+
+Histórico das condições comerciais acrescentado à ficha da matrícula com os componentes existentes: seção, lista de definição, datas locais e links para autoria/auditoria. As seções da coluna usam intervalo de 24px e mantêm a paleta e tipografia vigentes. Histórico vazio e erro de consulta possuem mensagens distintas e nova tentativa.
+
+Matrículas do aluno, cobranças da matrícula e encontros da turma usam a paginação compartilhada. Listagens mantêm busca/filtros/página no endereço e oferecem “Limpar filtros”. Relatórios possuem caminhos separados para cobranças e recebimentos no período consultado; abas financeiras preservam as datas. Testes de componentes e build aprovados; inspeção visual destas alterações em navegador ainda pendente conforme `docs/progress.md`.
+
 Direção vigente aprovada pelo usuário em 08/10/2026: sistema de gestão de **alunos, matrículas e leads**, com branco, preto e vermelho da marca em `favicon.ico`. Domínio: cadastro do aluno, lead, matrícula, condição comercial, cobrança, recebimento e chamada. Assinatura: Lead → Aluno → Matrícula → Participação, mantendo a distinção entre cadastro e elegibilidade. A paleta anterior marfim/verde/azul/âmbar foi substituída.
 
 ## Checkpoint — revisão de marca e interação
