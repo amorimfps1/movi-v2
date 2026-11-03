@@ -1,5 +1,7 @@
 # Contrato de integração MOVI+ — v1
 
+Atualização de 03/11/2026: [contracts-2026.md](contracts-2026.md) e `openapi.yaml` documentam os novos contratos, geração, renovação, comunicação manual e correção de chamada. Substituem as restrições históricas abaixo somente nesse recorte.
+
 Fonte: leitura integral de MOVI_Regras_de_Negocio_e_Requisitos.md. Base implementada conforme levantamento, sem afirmar homologação institucional. Propostas e decisões pendentes não entram em operação sem aprovação. Coordenador possui configurações globais, billing, README e integração. Agente administrativo possui backend/core. Agente interface possui frontend. Agente requisitos possui docs/requirements.md e docs/decisions.md; em segunda etapa possuirá backend/academic. Ninguém altera diretórios de outro responsável sem comunicar.
 
 ## Transporte

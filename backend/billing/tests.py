@@ -40,12 +40,11 @@ class FinancialTests(TestCase):
         return self.client.post(f'/api/charges/{charge.pk}/receive/',
             {'amount':amount,'paid_on':self.today.isoformat(),'method':'pix'},format='json')
 
-    def test_new_enrollment_pending(self):
+    def test_legacy_enrollment_creation_requires_configured_contract(self):
         response = self.client.post('/api/enrollments/',{'student':self.student.pk,'class_group':self.group.pk,
             'start_date':self.today.isoformat(),'plan':'monthly','amount':'100.00'},format='json')
-        self.assertEqual(response.status_code,201,response.data)
-        self.assertIsNot(response.data['eligibility']['eligible'],True)
-        self.assertEqual(response.data['administrative_status'],'regular')
+        self.assertEqual(response.status_code,400,response.data)
+        self.assertIn('payment_method', response.data)
 
     def test_enrollment_fee_does_not_release(self):
         self.assertEqual(self.receive(self.charge('enrollment_fee')).status_code,201)

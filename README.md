@@ -1,5 +1,7 @@
 # MOVI+
 
+**Contratos 2026 e chamada (03/11/2026):** implementados conforme `promptimpmodalidades.md`. Consulte [regras, migrations e pendências](docs/contracts-2026.md) antes de parametrizar modalidades. Os valores incompletos da planilha não foram presumidos. Execute as migrations antes de usar esta versão.
+
 Aplicação de gestão de alunos, matrículas e leads em React/TypeScript, Django REST Framework e PostgreSQL. Interface em português, tema branco/preto/vermelho conforme a marca, valores em reais e datas civis em `America/Sao_Paulo`.
 
 **Estado:** núcleo cadastral e financeiro avulso integrado; operação definitiva e homologação dependem das decisões institucionais listadas em [docs/decisions.md](docs/decisions.md). As políticas pendentes aparecem na aplicação e retornam HTTP 409 quando impedem uma ação. Uma aprovação configurada por ID não inventa o conteúdo de uma política.
@@ -37,7 +39,9 @@ Se já possui PostgreSQL, crie banco e usuário e ajuste `DATABASE_URL`; Docker 
 
 Na sessão original foi preparado PostgreSQL portátil oficial em `.local/postgresql-win/pgsql`, com cluster **exclusivo de demonstração** em `.local/pgdata`, escutando apenas `127.0.0.1:55432`. Naquele ambiente, `.env` apontava a esse banco com `DEMO_MODE=true`; esses arquivos são ignorados pelo Git. Os binários não são parte do código distribuído. A alternativa reproduzível normal é Docker ou instalação PostgreSQL própria.
 
-**Clone atual:** na retomada de 08/10/2026, `.env`, `.venv` e `.local` estavam ausentes. As dependências frontend foram instaladas com `npm ci`; backend e banco precisam da preparação descrita em “Executar localmente”. Os comandos de PostgreSQL portátil abaixo se aplicam somente quando esses arquivos locais existirem.
+**Clone atual:** em 03/11/2026 existem `.env`, `.venv` e binários PostgreSQL portáteis. O `.env` existente aponta para outra configuração local e foi preservado. Um banco demo separado foi criado no contêiner Docker `movi-codex-demo`, na porta 55432, com credenciais em `.env.demo`; esse contêiner não possui volume nomeado e seus dados são perdidos se ele for removido. A tentativa de iniciar os binários portáteis falhou; detalhes em `docs/verification.md`.
+
+O preparador portátil também aceita `python scripts/setup-local-db.py --env-file .env.demo` para usar uma configuração separada sem substituir `.env`. Ele exige binários portáteis funcionais e recusa configurações que não correspondam ao banco demo esperado. O arquivo alternativo não é carregado automaticamente pelo Django nem pelo inicializador; exporte suas variáveis no processo antes de iniciar serviços destinados a ele.
 
 Com o banco ativo e as dependências instaladas, este comando inicia a interface e a API em segundo plano, sem depender de manter os terminais abertos:
 
@@ -45,7 +49,7 @@ Com o banco ativo e as dependências instaladas, este comando inicia a interface
 powershell -NoProfile -File .\scripts\start-local.ps1
 ```
 
-O comando verifica a resposta da página e da API pelo proxy, reutiliza as portas já ativas e grava logs em `.local/backend.*.log` e `.local/frontend.*.log`. Os serviços ficam restritos a `127.0.0.1`. Execute novamente após reiniciar o computador; não há inicialização automática com o Windows. Se o PostgreSQL estiver parado, inicie-o antes conforme abaixo.
+O comando verifica a resposta da página e da API pelo proxy, reutiliza as portas já ativas e grava logs em `.local/backend.*.log` e `.local/frontend.*.log`. **Serviços já ativos mantêm sua configuração anterior**: a resposta ao teste de disponibilidade não confirma qual banco a API usa. Os serviços iniciados ficam restritos a `127.0.0.1`. Execute novamente após reiniciar o computador; não há inicialização automática com o Windows. Se o PostgreSQL estiver parado, inicie-o antes conforme abaixo.
 
 Se o cluster local desta sessão estiver parado:
 

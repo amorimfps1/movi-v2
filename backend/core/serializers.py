@@ -103,7 +103,7 @@ class StudentSerializer(serializers.ModelSerializer):
 class ModalitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Modality
-        fields = ["id", "name", "area", "default_price", "active"]
+        fields = ["id", "name", "area", "default_price", "active", "price_category", "enrollment_fee_kind"]
 
 
 class InstructorSerializer(serializers.ModelSerializer):

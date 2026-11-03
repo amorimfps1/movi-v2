@@ -12,6 +12,7 @@ import type { RecordData, Page, Summary } from "./types";
 import { chargeSpec, paymentSpec, paymentMethods } from "./schema";
 import { ResourceList } from "./resources";
 import { ActionForm } from "./forms";
+import { CollectionMessages } from "./CollectionMessages";
 import {
   PageTitle,
   Button,
@@ -163,10 +164,7 @@ export function Finance({ payments = false }: { payments?: boolean }) {
             <ErrorNotice error={summary.error} />
             {!payments && (
               <Notice tone="warning">
-                <strong>Geração automática indisponível.</strong> Periodicidade,
-                cobertura e horizonte de cobranças aguardam decisão: DN-004,
-                DN-005 e DN-006. Os lançamentos abaixo são obrigações
-                registradas.
+                Contratos parametrizados geram as parcelas e a taxa na matrícula. Para obrigações ausentes, use a regularização no detalhe da matrícula. Matrículas legadas exigem revisão das condições originais.
               </Notice>
             )}
           </>
@@ -234,6 +232,7 @@ export function ChargeDetail() {
           <strong className="charge-date">{date(row.due_date)}</strong>
         </div>
       </section>
+      <CollectionMessages chargeId={id!} />
       <div className="detail-grid">
         <section className="sheet">
           <div className="section-heading">

@@ -882,6 +882,13 @@ tr:hover .table-name svg,
 .field--wide {
   grid-column: 1/-1;
 }
+.contract-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;

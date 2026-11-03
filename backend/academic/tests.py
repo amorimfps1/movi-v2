@@ -80,7 +80,7 @@ class AcademicDefaultTests(AcademicFixtures, APITestCase):
         self.assertEqual(response.data["lesson"], self.lesson.pk)
         self.assertEqual(response.data["status"], "scheduled")
         self.assertEqual(response.data["marks"], [])
-        self.assertEqual(response.data["definition"], "Marcações gravadas na conclusão; não recalculadas pela elegibilidade atual.")
+        self.assertEqual(response.data["definition"], "Marcações atuais da chamada; correções preservadas na auditoria, sem recálculo pela elegibilidade atual.")
 
     def test_own_attendance_history_is_visible_without_financial_or_actor_data(self):
         self.stored_history()
@@ -196,33 +196,35 @@ class AcademicDefaultTests(AcademicFixtures, APITestCase):
         self.assertEqual(response.data["participants"], [])
         self.assertEqual(len(response.data["excluded"]), 2)
         self.assertIn("DN-004", response.data["decisions"])
-        self.assertIn("DN-014", response.data["decisions"])
+        self.assertNotIn("DN-014", response.data["decisions"])
 
     def test_instructor_receives_no_personal_or_financial_exclusion_details(self):
         self.client.force_authenticate(self.teacher_user)
         response = self.roster()
         self.assertEqual(response.status_code, 200)
         for item in response.data["excluded"]:
-            self.assertEqual(set(item), {"enrollment", "reason", "decisions"})
+            self.assertEqual(set(item), {"enrollment", "student_name", "reason", "decisions"})
             self.assertEqual(item["reason"], "Participação indisponível. Consulte a secretaria.")
         detail = self.client.get(f"/api/lessons/{self.lesson.pk}/").data
         self.assertNotIn("amount", detail)
         self.assertNotIn("charges", detail)
 
-    def test_default_attendance_is_blocked_even_empty_or_retroactive(self):
+    def test_default_empty_attendance_is_allowed_but_new_retroactive_is_blocked(self):
         for offset in [0, -1]:
+            self.lesson.status = 'scheduled'
             self.lesson.date = self.today + timedelta(days=offset)
             self.lesson.save()
             response = self.submit()
-            self.assertEqual(response.status_code, 409, response.data)
-            self.assertIn("DN-014", response.data["decisions"])
+            self.assertEqual(response.status_code, 409 if offset else 200, response.data)
+            if offset:
+                self.assertIn("DN-014", response.data["decisions"])
         self.assertFalse(Attendance.objects.exists())
         self.lesson.refresh_from_db()
         self.assertEqual(self.lesson.status, "scheduled")
 
     @override_settings(BUSINESS_APPROVALS=["DN-014"])
-    def test_approval_id_without_detailed_policy_does_not_unblock(self):
-        self.assertEqual(self.submit().status_code, 409)
+    def test_confirmed_default_policy_allows_empty_without_inventing_eligibility(self):
+        self.assertEqual(self.submit().status_code, 200)
         self.assertFalse(Attendance.objects.exists())
 
     @override_settings(BUSINESS_APPROVALS=["DN-014"], ATTENDANCE_POLICY={**TECHNICAL_POLICY, "allow_future": True})

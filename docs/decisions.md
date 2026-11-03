@@ -1,5 +1,9 @@
 # Decisões institucionais pendentes
 
+## Atualização — 03/11/2026
+
+O pedido `promptimpmodalidades.md` e respostas posteriores substituem as definições antigas de mensalidade/cobertura para contratos novos. Consulte [contracts-2026.md](contracts-2026.md) para DN-004/005/006/011/014 e WhatsApp manual. Ativação exige primeira parcela e taxa; renovação não repete taxa. Vencimentos provisórios e valores não definidos seguem pendentes. A matriz abaixo é histórica e não significa que todas as 22 decisões continuam integralmente indefinidas.
+
 Fonte: especificação v1.0, seção 13. Levantamento inicial em 07/10/2026; definições financeiras recebidas do usuário em 08/10/2026, registradas abaixo. A matriz indica decisões completas ainda pendentes; definições parciais não encerram todos os aspectos de uma DN.
 
 ## Definições confirmadas pelo usuário — 08/10/2026

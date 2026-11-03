@@ -15,6 +15,7 @@ class EligibilitySerializer(serializers.Serializer):
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
+    payment_method = serializers.ChoiceField(choices=['card', 'boleto'], required=False)
     student_name = serializers.CharField(source='student.name', read_only=True)
     class_name = serializers.CharField(source='class_group.name', read_only=True)
     eligibility = serializers.SerializerMethodField()
@@ -22,8 +23,10 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Enrollment
         fields = ['id','student','class_group','student_name','class_name','start_date','plan','amount',
-                  'administrative_status','kind','created_at','eligibility']
-        read_only_fields = ['administrative_status','created_at']
+                  'administrative_status','kind','created_at','eligibility', 'contract_version',
+                  'end_date', 'associated', 'payment_method', 'installments', 'fee_amount', 'renewed_from', 'schedule']
+        read_only_fields = ['administrative_status','created_at', 'contract_version', 'end_date', 'fee_amount', 'renewed_from', 'schedule']
+        extra_kwargs = {'amount': {'required': False}}
 
     @extend_schema_field(EligibilitySerializer)
     def get_eligibility(self, obj):
@@ -38,6 +41,12 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'student': 'Aluno arquivado.'})
         if group and not group.active:
             raise serializers.ValidationError({'class_group': 'Turma inativa.'})
+        if attrs.get('payment_method'):
+            from .contracts import terms
+            attrs.update(terms(group, attrs['start_date'], attrs['plan'], attrs.get('associated', False),
+                               attrs['payment_method'], attrs.get('installments', 1)))
+        else:
+            raise serializers.ValidationError({'payment_method': 'Novas matrículas exigem meio de pagamento e contrato parametrizado.'})
         return attrs
 
 
@@ -132,3 +141,28 @@ class DecisionErrorSerializer(serializers.Serializer):
 
 class CancelSerializer(serializers.Serializer):
     reason = serializers.CharField(allow_blank=False,max_length=2000)
+
+
+class MessageRequestSerializer(serializers.Serializer):
+    recipient = serializers.CharField(max_length=160)
+    phone = serializers.RegexField(r'^[1-9][0-9]{9,14}$', max_length=15)
+
+
+class MessageSentSerializer(serializers.Serializer):
+    message = serializers.IntegerField(min_value=1)
+
+
+class MessageResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    recipient = serializers.CharField()
+    phone = serializers.CharField()
+    text = serializers.CharField()
+    actor = serializers.IntegerField()
+    created_at = serializers.DateTimeField()
+    sent_at = serializers.DateTimeField(allow_null=True)
+    confirmed_by = serializers.IntegerField(allow_null=True)
+    url = serializers.URLField()
+
+
+class MessageConfirmationSerializer(serializers.Serializer):
+    sent_at = serializers.DateTimeField()

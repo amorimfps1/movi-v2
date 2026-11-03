@@ -1,5 +1,9 @@
 # Direção MOVI+
 
+## Contratos e chamada — 03/11/2026
+
+Mantida a direção branca/preta/vermelha, Manrope e componentes existentes. Contrato destaca vigência, parcelas, total e taxa separados; ações de regularizar/renovar usam flex com quebra e intervalo de 12px, margem superior de 16px. Chamada distingue bloqueio de marcação e oferece correção com motivo. Mensagem de cobrança preserva revisão do destinatário/texto e confirmação separada de envio manual. Formulário inspecionado em desktop e celular, ficha em celular; limites em `docs/verification.md`.
+
 ## Checkpoint — consultas e histórico — 08/10/2026
 
 Histórico das condições comerciais acrescentado à ficha da matrícula com os componentes existentes: seção, lista de definição, datas locais e links para autoria/auditoria. As seções da coluna usam intervalo de 24px e mantêm a paleta e tipografia vigentes. Histórico vazio e erro de consulta possuem mensagens distintas e nova tentativa.

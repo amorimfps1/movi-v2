@@ -1,5 +1,7 @@
 # Rastreabilidade MOVI+
 
+Atualização de 03/11/2026: [contratos 2026](contracts-2026.md) registra critérios novos de matrícula, geração, cobertura, renovação, comunicação e chamada autorizados por `promptimpmodalidades.md`. Substitui bloqueios históricos desta matriz nesse recorte. Evidências atuais em `verification.md`.
+
 Fonte funcional: [especificação v1.0](../MOVI_Regras_de_Negocio_e_Requisitos.md), lida integralmente. Contratos técnicos: [CONTRACT.md](CONTRACT.md). Data: 07/10/2026.
 
 **Base é referência do levantamento, não homologação institucional.** Nenhum estado técnico deste documento constitui aceite de negócio. As classificações originais são preservadas. Propostas ficam desativadas por padrão: `BUSINESS_APPROVALS = []`; ativação exige decisão expressa registrada em decisions.md e, quando necessário, política detalhada. Aprovar um ID não define fórmula, período, cobertura ou direitos por si só.

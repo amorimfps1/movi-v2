@@ -4,6 +4,29 @@ Implementação e verificações: 7–8 de outubro de 2026, America/Sao_Paulo.
 
 Este documento distingue execução técnica de homologação institucional. Nenhum teste aprova uma regra proposta ou resolve uma DN.
 
+## Contratos 2026 — 03/11/2026
+
+Implementação e decisões em [contracts-2026.md](contracts-2026.md). Migrations core 0002 e billing 0003/0004 aplicadas ao PostgreSQL de demonstração separado; banco original não migrado nesta execução.
+
+Verificações durante implementação: suíte PostgreSQL de 97 testes aprovada sem skips; após confirmar ativação com taxa e renovação sem taxa, os 11 testes de `billing.test_contracts` passaram. Esses testes abrangem planos/parcelamentos, totais exatos, associados/taxas, vencimentos 29–31 e após dia 15, pagamentos atrasados, regularização, cobrança ausente, expiração/renovação, idempotência, chamada vazia/todos ausentes, correção e WhatsApp manual. Testes anteriores continuam cobrindo acesso por perfil e concorrência. As expectativas antigas de chamada indisponível e preço manual foram atualizadas porque o prompt substituiu essas regras.
+
+Frontend: 31 testes em oito arquivos aprovados. Typecheck/build inicial aprovados; ajuste posterior no alvo configurável do Vite encontrou falta de tipos Node para `process`, corrigida usando `loadEnv` do próprio Vite. Resultado final registrado abaixo ao concluir a suíte.
+
+Navegador: Chrome headless em serviços demo separados (interface 5174/API 8001, banco 55432). Login Secretaria sintética; criação de modalidade/turma/aluno sintéticos via API; criação da matrícula pelo formulário; quatro cobranças persistidas (três parcelas + taxa); recebimentos sintéticos da primeira parcela e taxa pela API autenticada; elegibilidade retornou `true` e a recarga exibiu a ficha regular. Formulário inspecionado em 1440×1000 e 390×844, ficha em celular. Sem `pageerror`. Evidências locais ignoradas pelo Git: `.local/contracts-desktop.png`, `.local/contracts-mobile.png`, `.local/contract-detail-mobile.png`; script `.local/check-contracts.cjs`. Ajustado espaçamento entre ações da ficha após inspeção. Não foi enviado WhatsApp nem testada entrega/leitura. Chamada/correção têm evidência automatizada backend; não se declara percurso completo dessas ações no navegador.
+
+Limites: XLSX ausente, vínculos de categorias reais não definidos, Karatê/boleto/anos seguintes pendentes; vencimentos provisórios ainda exigem validação. Não houve deploy, migração do banco original ou habilitação de valores não definidos.
+
+## Retomada no clone — 03/11/2026
+
+- `manage.py check`: sem problemas; `npm run typecheck`: aprovado.
+- `npm run test`: 31 testes em oito arquivos aprovados; `npm run build`: aprovado. Testes e build foram executados fora da restrição de leitura do sandbox após falha do esbuild ao acessar diretório ancestral.
+- Backend com `TEST_SQLITE=1`: 87 testes executados, sete skips de concorrência. Em seguida, com PostgreSQL 16 isolado em Docker, migrações aplicadas e **87 testes aprovados sem skips**, incluindo os sete de concorrência. O banco de testes foi criado e destruído pela suíte.
+- Banco `movi_demo` separado preenchido com `seed_demo`; `.env` original preservado, configuração demo em `.env.demo`. O contêiner `movi-codex-demo` usa porta local 55432 e não possui volume nomeado; remover o contêiner apaga seus dados.
+- O PostgreSQL portátil falhou ao iniciar `initdb.exe` com código 3221225781, inclusive fora do sandbox. Docker foi usado como alternativa; a causa específica da falha não foi determinada.
+- O inicializador reutilizou serviços preexistentes nas portas 5173/8000. Foi verificado que a API desses serviços conectava-se ao PostgreSQL na porta 5432, não ao banco demo; tentativa de login com a conta sintética retornou credenciais inválidas. Nenhum percurso integrado das novas consultas foi validado nesta etapa. A verificação de portas dentro do sandbox havia indicado incorretamente que estavam livres; para retomar, identificar os processos e usar serviços isolados apontados explicitamente ao banco demo, sem substituir serviços existentes.
+
+Nenhuma decisão institucional foi habilitada. As evidências de navegador e homologação continuam com os limites indicados nas seções anteriores.
+
 ## Ambiente
 
 Windows, Python 3.11, PostgreSQL oficial portátil 16.15 em loopback 55432, Node 22.14, React/TypeScript/Vite. Migrações de core/billing/academic aplicadas com êxito em banco PostgreSQL exclusivo de demonstração. `BUSINESS_APPROVALS` vazio na aplicação; overrides de políticas somente em testes isolados.

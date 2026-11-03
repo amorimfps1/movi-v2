@@ -66,6 +66,8 @@ class Student(models.Model):
 
 
 class Modality(models.Model):
+    price_category = models.PositiveSmallIntegerField(null=True, blank=True, choices=[(i, f'Atividade {i}') for i in range(1, 8)])
+    enrollment_fee_kind = models.CharField(max_length=12, blank=True, choices=[('standard', 'Convencional'), ('rhythmic', 'Ginástica Rítmica')])
     name = models.CharField(max_length=120)
     area = models.CharField(max_length=120, blank=True)
     default_price = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0"))])

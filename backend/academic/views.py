@@ -11,6 +11,7 @@ from core.permissions import IsInternal, is_administrative
 from .models import Lesson
 from .serializers import AttendanceHistorySerializer, AttendanceSubmissionSerializer, DecisionResponseSerializer, LessonSerializer, RosterSerializer
 from .services import attendance_history, roster, save_lesson, submit_attendance
+from .serializers import AttendanceCorrectionSerializer
 
 
 class LessonViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
@@ -21,6 +22,17 @@ class LessonViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
     search_fields = ["class_group__name", "class_group__modality__name"]
     ordering_fields = ["date", "id", "class_group__name"]
     ordering = ["-date", "-id"]
+
+    @extend_schema(request=AttendanceCorrectionSerializer, responses=LessonSerializer)
+    @action(detail=True, methods=['post'])
+    def correct_attendance(self, request, pk=None):
+        from .serializers import AttendanceCorrectionSerializer
+        from .services import correct_attendance
+        lesson = self.get_object()
+        data = AttendanceCorrectionSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        corrected = correct_attendance(request.user.pk, lesson.pk, **data.validated_data)
+        return Response(LessonSerializer(corrected).data)
 
     def get_queryset(self):
         queryset = Lesson.objects.select_related("class_group__instructor", "assigned_instructor")

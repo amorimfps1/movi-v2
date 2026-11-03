@@ -15,7 +15,8 @@ import {
   Empty,
   Pagination,
 } from "./ui";
-import { ActionForm } from "./forms";
+import { ActionForm, RecordForm } from "./forms";
+import { enrollmentFields } from "./schema";
 import { date, label, money, today } from "./format";
 export function EnrollmentDetail() {
   const { id } = useParams();
@@ -32,6 +33,8 @@ function EnrollmentRecord({ id }: { id: string }) {
   );
   const [cancel, setCancel] = useState(false);
   const [notice, setNotice] = useState("");
+  const [renewing, setRenewing] = useState(false);
+  const [repairing, setRepairing] = useState(false);
   if (enrollment.isPending) return <Loading />;
   if (enrollment.error) return <ErrorNotice error={enrollment.error} />;
   if (!enrollment.data) return null;
@@ -65,6 +68,19 @@ function EnrollmentRecord({ id }: { id: string }) {
         }
       />
       {notice && <Notice tone="success">{notice}</Notice>}
+      {value.contract_version === 1 && <section className="sheet section-pad">
+        <h2>Contrato e parcelas</h2>
+        <p>Vigência: {date(value.start_date)} a {date(value.end_date)} · {String(value.installments)} parcelas · Total {money(value.amount)} · Taxa {money(value.fee_amount)}</p>
+        <Notice>Vencimentos provisórios: primeira cobrança dia 15 ou último dia do mês; seguintes no dia original da matrícula.</Notice>
+        <div className="contract-actions"><Button variant="secondary" onClick={() => setRepairing(true)}>Regularizar cobranças ausentes</Button>
+        <Button variant="secondary" onClick={() => setRenewing(true)}>Renovar contrato</Button>
+        </div>
+      </section>}
+      {repairing && <ActionForm title="Regularizar cobranças" description="Recria apenas obrigações ausentes do cronograma original, sem alterar datas ou duplicar parcelas."
+        endpoint={`enrollments/${id}/repair_charges/`} fields={[]} onClose={() => setRepairing(false)} onSaved={() => setNotice('Cronograma conferido e cobranças ausentes geradas.')} />}
+      {renewing && <RecordForm title="Renovar contrato" endpoint={`enrollments/${id}/renew/`}
+        fields={enrollmentFields.filter(f => !['student', 'class_group'].includes(f.key))}
+        onClose={() => setRenewing(false)} onSaved={row => setNotice(`Renovação registrada na matrícula #${row.id}.`)} />}
       <Journey step={state?.eligible ? 3 : 2} />
       <div className="detail-grid">
         <div className="detail-column">
@@ -101,8 +117,7 @@ function EnrollmentRecord({ id }: { id: string }) {
             </dl>
             <div className="section-pad">
               <Notice tone="warning">
-                Vigência, alterações comerciais, suspensão e renovação aguardam
-                política institucional. DN-004, DN-010 e DN-011.
+                {value.contract_version === 1 ? 'Valores e cronograma originais preservados. Suspensão e alterações contratuais exigem definição própria.' : 'Matrícula legada: vigência e cronograma não foram inferidos. Requer revisão das condições originais.'}
               </Notice>
             </div>
           </section>

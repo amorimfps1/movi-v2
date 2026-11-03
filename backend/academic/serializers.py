@@ -62,6 +62,7 @@ class RosterParticipantSerializer(serializers.Serializer):
 
 class RosterExcludedSerializer(serializers.Serializer):
     enrollment = serializers.IntegerField()
+    student_name = serializers.CharField()
     reason = serializers.CharField()
     decisions = serializers.ListField(child=serializers.CharField())
 
@@ -91,3 +92,13 @@ class AttendanceHistorySerializer(serializers.Serializer):
     status = serializers.CharField()
     marks = AttendanceHistoryMarkSerializer(many=True)
     definition = serializers.CharField()
+
+
+class AttendanceCorrectionSerializer(serializers.Serializer):
+    marks = AttendanceMarkSerializer(many=True, allow_empty=False)
+    reason = serializers.CharField(max_length=2000, allow_blank=False)
+
+    def validate_marks(self, marks):
+        if len({m['enrollment'] for m in marks}) != len(marks):
+            raise serializers.ValidationError('Matrícula repetida.')
+        return marks

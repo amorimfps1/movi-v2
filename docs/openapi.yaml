@@ -283,6 +283,190 @@ paths:
               schema:
                 $ref: '#/components/schemas/Charge'
           description: ''
+  /api/charges/{id}/confirm_message/:
+    post:
+      operationId: charges_confirm_message_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este charge.
+        required: true
+      tags:
+      - charges
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageSent'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageSent'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageSent'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageConfirmation'
+          description: ''
+  /api/charges/{id}/messages/:
+    get:
+      operationId: charges_messages_list
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - enrollment_fee
+          - extra
+          - tuition
+        description: |-
+          * `tuition` - Mensalidade
+          * `enrollment_fee` - Taxa de matrícula
+          * `extra` - Outra receita
+      - in: query
+        name: competence
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: enrollment
+        schema:
+          type: integer
+      - in: query
+        name: enrollment__student
+        schema:
+          type: integer
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este charge.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - charges
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMessageResponseList'
+          description: ''
+    post:
+      operationId: charges_messages_create
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - enrollment_fee
+          - extra
+          - tuition
+        description: |-
+          * `tuition` - Mensalidade
+          * `enrollment_fee` - Taxa de matrícula
+          * `extra` - Outra receita
+      - in: query
+        name: competence
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: enrollment
+        schema:
+          type: integer
+      - in: query
+        name: enrollment__student
+        schema:
+          type: integer
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este charge.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - charges
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMessageResponseList'
+          description: ''
   /api/charges/{id}/receive/:
     post:
       operationId: charges_receive_create
@@ -835,6 +1019,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Eligibility'
+          description: ''
+  /api/enrollments/{id}/renew/:
+    post:
+      operationId: enrollments_renew_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      tags:
+      - enrollments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Enrollment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+          description: ''
+  /api/enrollments/{id}/repair_charges/:
+    post:
+      operationId: enrollments_repair_charges_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      tags:
+      - enrollments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
           description: ''
   /api/instructors/:
     get:
@@ -1441,6 +1679,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DecisionResponse'
+          description: ''
+  /api/lessons/{id}/correct_attendance/:
+    post:
+      operationId: lessons_correct_attendance_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lesson.
+        required: true
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceCorrection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AttendanceCorrection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AttendanceCorrection'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
           description: ''
   /api/lessons/{id}/roster/:
     get:
@@ -2196,6 +2467,19 @@ components:
       description: |-
         * `regular` - Regular
         * `cancelled` - Cancelada
+    AttendanceCorrection:
+      type: object
+      properties:
+        marks:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceMark'
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - marks
+      - reason
     AttendanceHistory:
       type: object
       properties:
@@ -2296,6 +2580,9 @@ components:
       - reason
       - target_id
       - target_type
+    BlankEnum:
+      enum:
+      - ''
     Cancel:
       type: object
       properties:
@@ -2550,18 +2837,57 @@ components:
           allOf:
           - $ref: '#/components/schemas/Eligibility'
           readOnly: true
+        contract_version:
+          type: integer
+          readOnly: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        associated:
+          type: boolean
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethodEnum'
+        installments:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        fee_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        renewed_from:
+          type: integer
+          readOnly: true
+          nullable: true
+        schedule:
+          readOnly: true
       required:
       - administrative_status
-      - amount
       - class_group
       - class_name
+      - contract_version
       - created_at
       - eligibility
+      - end_date
+      - fee_amount
       - id
       - plan
+      - renewed_from
+      - schedule
       - start_date
       - student
       - student_name
+    EnrollmentFeeKindEnum:
+      enum:
+      - standard
+      - rhythmic
+      type: string
+      description: |-
+        * `standard` - Convencional
+        * `rhythmic` - Ginástica Rítmica
     Instructor:
       type: object
       properties:
@@ -2726,6 +3052,71 @@ components:
           type: string
       required:
       - detail
+    MessageConfirmation:
+      type: object
+      properties:
+        sent_at:
+          type: string
+          format: date-time
+      required:
+      - sent_at
+    MessageRequest:
+      type: object
+      properties:
+        recipient:
+          type: string
+          maxLength: 160
+        phone:
+          type: string
+          maxLength: 15
+          pattern: ^[1-9][0-9]{9,14}$
+      required:
+      - phone
+      - recipient
+    MessageResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        recipient:
+          type: string
+        phone:
+          type: string
+        text:
+          type: string
+        actor:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        confirmed_by:
+          type: integer
+          nullable: true
+        url:
+          type: string
+          format: uri
+      required:
+      - actor
+      - confirmed_by
+      - created_at
+      - id
+      - phone
+      - recipient
+      - sent_at
+      - text
+      - url
+    MessageSent:
+      type: object
+      properties:
+        message:
+          type: integer
+          minimum: 1
+      required:
+      - message
     MethodEnum:
       enum:
       - pix
@@ -2758,10 +3149,24 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         active:
           type: boolean
+        price_category:
+          nullable: true
+          minimum: 0
+          maximum: 32767
+          oneOf:
+          - $ref: '#/components/schemas/PriceCategoryEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        enrollment_fee_kind:
+          oneOf:
+          - $ref: '#/components/schemas/EnrollmentFeeKindEnum'
+          - $ref: '#/components/schemas/BlankEnum'
       required:
       - default_price
       - id
       - name
+    NullEnum:
+      enum:
+      - null
     PaginatedAuditList:
       type: object
       required:
@@ -2946,6 +3351,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Lesson'
+    PaginatedMessageResponseList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageResponse'
     PaginatedModalityList:
       type: object
       required:
@@ -3117,6 +3545,33 @@ components:
           allOf:
           - $ref: '#/components/schemas/Eligibility'
           readOnly: true
+        contract_version:
+          type: integer
+          readOnly: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        associated:
+          type: boolean
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethodEnum'
+        installments:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        fee_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        renewed_from:
+          type: integer
+          readOnly: true
+          nullable: true
+        schedule:
+          readOnly: true
     PatchedInstructor:
       type: object
       properties:
@@ -3230,6 +3685,17 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         active:
           type: boolean
+        price_category:
+          nullable: true
+          minimum: 0
+          maximum: 32767
+          oneOf:
+          - $ref: '#/components/schemas/PriceCategoryEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        enrollment_fee_kind:
+          oneOf:
+          - $ref: '#/components/schemas/EnrollmentFeeKindEnum'
+          - $ref: '#/components/schemas/BlankEnum'
     PatchedStudent:
       type: object
       properties:
@@ -3305,6 +3771,14 @@ components:
       - method
       - paid_on
       - student_name
+    PaymentMethodEnum:
+      enum:
+      - card
+      - boleto
+      type: string
+      description: |-
+        * `card` - card
+        * `boleto` - boleto
     PendingDecision:
       type: object
       properties:
@@ -3348,6 +3822,24 @@ components:
       - demo
       - pending
       - timezone
+    PriceCategoryEnum:
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      type: integer
+      description: |-
+        * `1` - Atividade 1
+        * `2` - Atividade 2
+        * `3` - Atividade 3
+        * `4` - Atividade 4
+        * `5` - Atividade 5
+        * `6` - Atividade 6
+        * `7` - Atividade 7
     Reason:
       type: object
       properties:
@@ -3425,6 +3917,8 @@ components:
       properties:
         enrollment:
           type: integer
+        student_name:
+          type: string
         reason:
           type: string
         decisions:
@@ -3435,6 +3929,7 @@ components:
       - decisions
       - enrollment
       - reason
+      - student_name
     RosterParticipant:
       type: object
       properties:

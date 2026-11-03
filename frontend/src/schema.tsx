@@ -106,20 +106,17 @@ export const enrollmentFields: FieldSpec[] = [
     label: "Plano",
     type: "select",
     required: true,
-    default: "monthly",
+    default: "quarterly",
     options: [
-      { value: "monthly", label: "Mensal" },
       { value: "quarterly", label: "Trimestral" },
       { value: "yearly", label: "Anual" },
     ],
   },
-  {
-    key: "amount",
-    label: "Valor contratado (R$)",
-    type: "decimal",
-    required: true,
-    hint: "Periodicidade e cobertura dependem de política aprovada.",
-  },
+  { key: "associated", label: "Associado", type: "check", default: false },
+  { key: "payment_method", label: "Meio de pagamento contratado", type: "select", default: "card", required: true,
+    options: [{ value: "card", label: "Cartão · tabela 2026" }, { value: "boleto", label: "Boleto · preço pendente" }] },
+  { key: "installments", label: "Número de parcelas", type: "number", min: 1, max: 12, default: 3, required: true,
+    hint: "Trimestral: 1, 2 ou 3. Anual: 3, 6, 10 ou 12. Total calculado pela categoria configurada na modalidade; taxa separada." },
   {
     key: "kind",
     label: "Tipo",
@@ -279,6 +276,11 @@ export const modalitySpec: ResourceSpec = {
   fields: [
     { key: "name", label: "Nome da modalidade", required: true, wide: true },
     { key: "area", label: "Área" },
+    { key: "price_category", label: "Categoria de preços 2026", type: "select", nullable: true,
+      options: Array.from({length: 7}, (_, i) => ({value: i + 1, label: `Atividade ${i + 1}${i === 6 ? ' · Karatê: pendente' : ''}`})),
+      hint: "Selecione somente após conferir o vínculo da modalidade com a tabela." },
+    { key: "enrollment_fee_kind", label: "Taxa de matrícula", type: "select",
+      options: [{value: 'standard', label: 'Demais modalidades'}, {value: 'rhythmic', label: 'Ginástica Rítmica'}] },
     {
       key: "default_price",
       label: "Valor padrão (R$)",

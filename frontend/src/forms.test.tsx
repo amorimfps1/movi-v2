@@ -7,7 +7,7 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
-it("sugere o valor da modalidade e preserva o valor ajustado pelo operador", async () => {
+it("mantém o contrato escolhido ao trocar turma e não usa o preço legado como total", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn().mockImplementation((path: string) => {
@@ -53,10 +53,13 @@ it("sugere o valor da modalidade e preserva o valor ajustado pelo operador", asy
   );
   await screen.findByLabelText("Turma");
   fireEvent.change(screen.getByLabelText("Turma"), { target: { value: "1" } });
-  expect(screen.getByLabelText("Valor contratado (R$)")).toHaveValue(150);
-  fireEvent.change(screen.getByLabelText("Valor contratado (R$)"), {
-    target: { value: "175" },
+  expect(screen.queryByLabelText("Valor contratado (R$)")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Plano"), { target: { value: "yearly" } });
+  fireEvent.change(screen.getByLabelText("Número de parcelas"), {
+    target: { value: "12" },
   });
   fireEvent.change(screen.getByLabelText("Turma"), { target: { value: "2" } });
-  expect(screen.getByLabelText("Valor contratado (R$)")).toHaveValue(175);
+  expect(screen.getByLabelText("Número de parcelas")).toHaveValue(12);
+  expect(screen.getByLabelText("Plano")).toHaveValue('yearly');
+  expect(screen.queryByLabelText("Valor contratado (R$)")).not.toBeInTheDocument();
 });

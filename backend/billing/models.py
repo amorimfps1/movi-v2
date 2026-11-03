@@ -7,6 +7,14 @@ from django.utils import timezone
 
 
 class Enrollment(models.Model):
+    contract_version = models.PositiveSmallIntegerField(default=0, editable=False)
+    end_date = models.DateField(null=True, blank=True, editable=False)
+    associated = models.BooleanField(default=False)
+    payment_method = models.CharField(max_length=12, blank=True)
+    installments = models.PositiveSmallIntegerField(default=1)
+    fee_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)
+    renewed_from = models.OneToOneField('self', null=True, blank=True, on_delete=models.PROTECT, related_name='renewal', editable=False)
+    schedule = models.JSONField(default=list, editable=False)
     student = models.ForeignKey('core.Student', on_delete=models.PROTECT, related_name='enrollments')
     class_group = models.ForeignKey('core.ClassGroup', on_delete=models.PROTECT, related_name='enrollments')
     start_date = models.DateField()
@@ -79,3 +87,17 @@ class Payment(models.Model):
             models.CheckConstraint(condition=Q(amount__gt=0), name='payment_positive_amount'),
             models.UniqueConstraint(fields=['charge'], name='one_full_settlement_per_charge'),
         ]
+
+
+class CollectionMessage(models.Model):
+    charge = models.ForeignKey(Charge, on_delete=models.PROTECT, related_name='messages')
+    recipient = models.CharField(max_length=160)
+    phone = models.CharField(max_length=15)
+    text = models.TextField()
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name='+')
+
+    class Meta:
+        ordering = ['-id']

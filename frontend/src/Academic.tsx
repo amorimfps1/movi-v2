@@ -14,7 +14,7 @@ import { useApi } from "./query";
 import { post } from "./api";
 import { ResourceList } from "./resources";
 import { lessonSpec, classSpec } from "./schema";
-import { RecordForm } from "./forms";
+import { RecordForm, ActionForm } from "./forms";
 import {
   PageTitle,
   Loading,
@@ -31,7 +31,7 @@ type Roster = {
   lesson: number;
   version: string;
   participants: { enrollment: number; student_name: string }[];
-  excluded: { enrollment: number; reason: string; decisions: string[] }[];
+  excluded: { enrollment: number; student_name?: string; reason: string; decisions: string[] }[];
   decisions: string[];
 };
 type RecordedAttendance = {
@@ -96,14 +96,15 @@ export function LessonDetail() {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [success, setSuccess] = useState("");
+  const [correction, setCorrection] = useState<{enrollment: number; present: boolean} | null>(null);
   const client = useQueryClient();
   if (query.isPending) return <Loading />;
   if (query.error) return <ErrorNotice error={query.error} />;
   if (!query.data) return null;
   const lesson = query.data;
-  const blocked = !!roster.data?.decisions.length;
+  const blocked = !!roster.data?.decisions.includes('DN-014');
   const complete =
-    !!roster.data?.participants.length &&
+    !!roster.data &&
     roster.data.participants.every(
       (participant) => typeof marks[participant.enrollment] === "boolean",
     );
@@ -156,8 +157,7 @@ export function LessonDetail() {
       </section>
       {lesson.status === "completed" && (
         <Notice tone="success">
-          Aula realizada e chamada concluída. Correções e reabertura aguardam
-          política própria, DN-014.
+          Aula realizada. Correções preservam as marcações originais na auditoria.
         </Notice>
       )}
       {lesson.status === "cancelled" && (
@@ -206,6 +206,7 @@ export function LessonDetail() {
                           <th>Aluno</th>
                           <th>Frequência</th>
                           <th>Registrada em</th>
+                          <th>Correção</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -223,6 +224,7 @@ export function LessonDetail() {
                               </Badge>
                             </td>
                             <td>{timestamp(mark.created_at)}</td>
+                            <td><Button variant="secondary" onClick={() => setCorrection({enrollment: mark.enrollment, present: !mark.present})}>Corrigir para {mark.present ? 'ausente' : 'presente'}</Button></td>
                           </tr>
                         ))}
                       </tbody>
@@ -236,8 +238,7 @@ export function LessonDetail() {
                 )}
                 <p className="report-definition">
                   Registros preservados da conclusão da aula. Indicadores
-                  agregados de frequência e alertas aguardam DN-018. Correção e
-                  reabertura aguardam DN-014.
+                  agregados de frequência e alertas aguardam DN-018. Correções ficam na auditoria.
                 </p>
               </>
             )
@@ -287,10 +288,10 @@ export function LessonDetail() {
                 )}
               </div>
               {!roster.data.participants.length ? (
-                <Empty
+                <><Empty
                   title="Nenhum aluno elegível nesta lista"
-                  description="A ausência de alunos não conclui a aula. Consulte as matrículas e as políticas de participação."
-                />
+                  description="Confira os vínculos bloqueados antes de concluir sem presenças."
+                /><Button disabled={!canSubmit} onClick={() => setConfirming(true)}>Concluir sem presenças</Button></>
               ) : (
                 <form
                   onSubmit={(event) => {
@@ -393,9 +394,9 @@ export function LessonDetail() {
                     {roster.data.excluded.map((item, index) => (
                       <li key={item.enrollment}>
                         <strong>
-                          {admin
+                          {item.student_name || (admin
                             ? `Matrícula #${item.enrollment}`
-                            : `Vínculo indisponível ${index + 1}`}
+                            : `Vínculo indisponível ${index + 1}`)}
                         </strong>
                         <p>{item.reason}</p>
                         {item.decisions.length > 0 && (
@@ -425,6 +426,10 @@ export function LessonDetail() {
           }}
         />
       )}
+      {correction && <ActionForm title="Corrigir frequência" endpoint={`lessons/${id}/correct_attendance/`}
+        fields={[{key: 'reason', label: 'Motivo da correção', type: 'textarea', required: true}]}
+        transform={values => ({...values, marks: [correction]})}
+        onClose={() => setCorrection(null)} onSaved={() => setSuccess('Correção registrada com auditoria.')} />}
       {confirming && roster.data && (
         <Confirm
           title="Concluir chamada e aula?"

@@ -1,4 +1,5 @@
 """Prepare the project's isolated PostgreSQL demo cluster on Windows."""
+import argparse
 import os
 from pathlib import Path
 import secrets
@@ -22,12 +23,15 @@ def run(*args):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--env-file', default='.env', help='Arquivo de configuração local (padrão: .env).')
+    args = parser.parse_args()
     if os.name != 'nt':
         raise SystemExit('Este preparo portátil é para Windows. Use o compose.yaml nos demais ambientes.')
     if not (BIN / 'initdb.exe').is_file():
         raise SystemExit('Extraia os binários PostgreSQL em .local/postgresql-win conforme o README.')
     LOCAL.mkdir(exist_ok=True)
-    env_path = ROOT / '.env'
+    env_path = ROOT / args.env_file
     if not env_path.exists():
         password = secrets.token_hex(24)
         env_path.write_text(
@@ -73,7 +77,7 @@ def main():
             encoding='utf-8',
         )
     print('PostgreSQL local pronto em 127.0.0.1:55432; bancos movi_demo e movi_e2e separados.')
-    print('Credenciais locais preservadas em .env e .env.e2e (ignorados pelo Git).')
+    print(f'Credenciais locais preservadas em {env_path} e .env.e2e.')
 
 
 if __name__ == '__main__':

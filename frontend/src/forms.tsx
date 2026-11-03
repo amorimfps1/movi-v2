@@ -99,6 +99,7 @@ export function RecordForm({
     }
     if (
       endpoint === "enrollments/" &&
+      fields.some((item) => item.key === 'amount') &&
       field.key === "class_group" &&
       !priceTouched &&
       !record
@@ -307,6 +308,7 @@ export function RecordForm({
   );
 }
 export function ActionForm({
+  transform,
   title,
   description,
   endpoint,
@@ -315,6 +317,7 @@ export function ActionForm({
   onSaved,
   button = "Confirmar",
 }: {
+  transform?: (values: Record<string, unknown>) => Record<string, unknown>;
   title: string;
   description?: string;
   endpoint: string;
@@ -337,7 +340,7 @@ export function ActionForm({
           setPending(true);
           setError(undefined);
           try {
-            await post(endpoint, values);
+            await post(endpoint, transform ? transform(values) : values);
             await client.invalidateQueries();
             onSaved?.();
             onClose();

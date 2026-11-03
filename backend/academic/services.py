@@ -82,6 +82,10 @@ def _locked_lesson(actor_id, lesson_id):
 
 
 def _attendance_policy():
+    # Explicit authorization in promptimpmodalidades.md supersedes DN-014's
+    # former default block. Keep explicit legacy overrides for regression tests.
+    if getattr(settings, 'ATTENDANCE_POLICY', None) is None:
+        return {'allow_empty': True}
     approvals = getattr(settings, "BUSINESS_APPROVALS", [])
     policy = getattr(settings, "ATTENDANCE_POLICY", None)
     # The currently supported slice must be explicitly approved; an ID alone
@@ -123,7 +127,8 @@ def _snapshot(actor, class_group, lesson):
             unresolved = unresolved or eligible is None
             excluded.append({
                 "enrollment": enrollment.pk,
-                "reason": result.get("reason", "Participação indisponível.") if is_administrative(actor)
+                "student_name": enrollment.student.name,
+                "reason": result.get("reason", "Participação indisponível.") if is_administrative(actor) or enrollment.contract_version == 1
                           else "Participação indisponível. Consulte a secretaria.",
                 "decisions": item_decisions,
             })
@@ -167,7 +172,7 @@ def attendance_history(actor_id, lesson_id):
         "lesson": lesson.pk,
         "status": lesson.status,
         "marks": marks,
-        "definition": "Marcações gravadas na conclusão; não recalculadas pela elegibilidade atual.",
+        "definition": "Marcações atuais da chamada; correções preservadas na auditoria, sem recálculo pela elegibilidade atual.",
     }
 
 
@@ -175,7 +180,7 @@ def attendance_history(actor_id, lesson_id):
 def submit_attendance(actor_id, lesson_id, version, marks):
     actor, class_group, lesson = _locked_lesson(actor_id, lesson_id)
     _can_submit(actor, lesson, class_group)
-    _attendance_policy()
+    policy = _attendance_policy()
     if lesson.status != Lesson.Status.SCHEDULED or Attendance.objects.filter(lesson=lesson).exists():
         raise AcademicConflict("A chamada já foi concluída ou a aula foi cancelada. Correções dependem de política própria.", ["DN-014"])
     if lesson.date != timezone.localdate():
@@ -187,13 +192,13 @@ def submit_attendance(actor_id, lesson_id, version, marks):
         raise AcademicConflict("A lista da chamada é inválida. Atualize o diário.")
     if signed != {"actor": actor.pk, "lesson": lesson.pk, "digest": digest}:
         raise AcademicConflict("A lista ou a autorização mudou. Atualize a chamada antes de confirmar.", payload["decisions"])
-    if unresolved:
+    if unresolved and not policy.get('allow_empty'):
         raise AcademicConflict("Existem matrículas cuja elegibilidade aguarda decisão institucional. Consulte a secretaria.", payload["decisions"])
     expected = {participant["enrollment"] for participant in payload["participants"]}
     submitted = [mark["enrollment"] for mark in marks]
     if len(submitted) != len(set(submitted)) or set(submitted) != expected:
         raise ValidationError({"marks": ["Envie exatamente uma marcação por matrícula elegível; atualize a lista se necessário."]})
-    if not expected:
+    if not expected and not policy.get('allow_empty'):
         raise AcademicConflict("Aula sem participantes exige política institucional específica.", ["DN-014"])
     Attendance.objects.bulk_create([
         Attendance(lesson=lesson, enrollment_id=mark["enrollment"], present=mark["present"], actor=actor)
@@ -202,6 +207,27 @@ def submit_attendance(actor_id, lesson_id, version, marks):
     lesson.status = Lesson.Status.COMPLETED
     lesson.save(update_fields=["status"])
     record(actor, "attendance.completed", lesson, metadata={"enrollments": sorted(expected), "count": len(marks)})
+    return lesson
+
+
+@transaction.atomic
+def correct_attendance(actor_id, lesson_id, marks, reason):
+    actor, group, lesson = _locked_lesson(actor_id, lesson_id)
+    _can_submit(actor, lesson, group)
+    if lesson.status != Lesson.Status.COMPLETED:
+        raise AcademicConflict('Somente uma chamada já concluída pode ser corrigida.')
+    existing = {a.enrollment_id: a for a in Attendance.objects.select_for_update().filter(lesson=lesson)}
+    if not reason.strip() or not marks or any(m['enrollment'] not in existing for m in marks):
+        raise ValidationError('Informe motivo e marcações existentes; correção não cria chamada retroativa.')
+    for mark in marks:
+        attendance = existing[mark['enrollment']]
+        if attendance.present != mark['present']:
+            before = attendance.present
+            attendance.present = mark['present']
+            attendance.save(update_fields=['present'])
+            record(actor, 'attendance.corrected', attendance, reason=reason,
+                   metadata={'lesson': lesson.pk, 'enrollment': attendance.enrollment_id,
+                             'before': before, 'after': attendance.present})
     return lesson
 
 
