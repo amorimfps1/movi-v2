@@ -1,5 +1,13 @@
 # Direção MOVI+
 
+## EcoWork — 04/11/2026
+
+Intenção: secretaria localiza o frequentador, confere validade e pendências e registra somente recebimentos confirmados. Domínio: pessoa, condomínio associado, residência conferida, plano, parcela, cobertura e quitação. Assinatura: condição associativa → desconto preservado → primeira parcela → vigência, com cobertura sempre separada do saldo financeiro.
+
+Paleta existente: branco/papel, preto/texto, cinza dos controles, vermelho da marca e vermelho suave dos impedimentos; temas claro/escuro herdam os tokens existentes. Hierarquia: busca da pessoa e contratação no topo, nome do frequentador em 20px/600, condições em quatro colunas, parcelas logo abaixo. Evitados cards genéricos de indicadores, nova paleta verde e controles customizados. Manrope, base 4px, cartões 24px (16px no celular), intervalo 24px e controles existentes preservados; bordas discretas e superfícies sem sombras novas.
+
+Componentes novos `EcoWork`, contratação, recebimento e manutenção de vínculos reutilizam Button/Field/Modal/Notice e elementos nativos. Tabela usa `.table-scroll`, região nomeada acessível por teclado. Preço confirmado aparece em 28px; pagamento exige conferência explícita, com erro preservado no formulário. Desktop/celular inspecionados em Chrome; overflow corrigido e página 390/390px. Evidências e limites em `docs/ecowork-implementacao.md`.
+
 ## Contratos e chamada — 03/11/2026
 
 Mantida a direção branca/preta/vermelha, Manrope e componentes existentes. Contrato destaca vigência, parcelas, total e taxa separados; ações de regularizar/renovar usam flex com quebra e intervalo de 12px, margem superior de 16px. Chamada distingue bloqueio de marcação e oferece correção com motivo. Mensagem de cobrança preserva revisão do destinatário/texto e confirmação separada de envio manual. Formulário inspecionado em desktop e celular, ficha em celular; limites em `docs/verification.md`.

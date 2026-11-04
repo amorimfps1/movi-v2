@@ -22,6 +22,7 @@ import {
 } from "./ui";
 import { date, money, label } from "./format";
 import { useAuth, isAdmin } from "./auth";
+import { EcoWorkActions } from "./EcoWorkActions";
 export function RecordDetail({ spec }: { spec: ResourceSpec }) {
   const { id } = useParams();
   return <RecordDetails key={`${spec.endpoint}${id}`} spec={spec} id={id!} />;
@@ -146,6 +147,7 @@ function RecordDetails({ spec, id }: { spec: ResourceSpec; id: string }) {
           )}
         </section>
         <div>
+          <EcoWorkActions endpoint={spec.endpoint} row={row} />
           {spec.endpoint === "leads/" && (
             <section className="sheet">
               <div className="section-heading">

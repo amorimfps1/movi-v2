@@ -13,6 +13,7 @@ import type { User } from "./types";
 import { api, post, ApiError } from "./api";
 import { Button, Field, ErrorNotice, Notice, Loading } from "./ui";
 import { useNavigate, Link } from "react-router-dom";
+import { ThemeToggle } from "./theme";
 const AuthContext = createContext<{
   user: User | null;
   loading: boolean;
@@ -184,6 +185,9 @@ export function Login({ register = false }: { register?: boolean }) {
         </div>
       </aside>
       <main className="auth-form">
+        <div className="auth-theme-control">
+          <ThemeToggle />
+        </div>
         <div className="auth-mobile-brand wordmark">
           movi<span>+</span>
         </div>

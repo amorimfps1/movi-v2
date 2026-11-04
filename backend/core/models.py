@@ -65,6 +65,54 @@ class Student(models.Model):
         return self.name
 
 
+# Transitional name for the SAME identity table. Keep historical model labels,
+# audit targets and academic foreign keys until their coordinated migration.
+Person = Student
+
+
+class Condominium(models.Model):
+    name = models.CharField(max_length=200)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+
+
+class CondominiumAssociation(models.Model):
+    condominium = models.ForeignKey(Condominium, on_delete=models.PROTECT, related_name="associations")
+    starts_on = models.DateField()
+    ends_on = models.DateField(null=True, blank=True)  # Exclusive end.
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-starts_on", "-id"]
+        constraints = [models.CheckConstraint(
+            condition=models.Q(ends_on__isnull=True) | models.Q(ends_on__gt=models.F("starts_on")),
+            name="core_association_valid_period",
+        )]
+
+
+class ResidenceVerification(models.Model):
+    person = models.ForeignKey(Student, on_delete=models.PROTECT, related_name="residence_verifications")
+    condominium = models.ForeignKey(Condominium, on_delete=models.PROTECT, related_name="residence_verifications")
+    declared = models.BooleanField()
+    proof_checked = models.BooleanField()
+    verified_at = models.DateTimeField(auto_now_add=True)
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(User, null=True, on_delete=models.PROTECT, related_name="+")
+    revocation_reason = models.CharField(max_length=2000, blank=True)
+
+    class Meta:
+        ordering = ["-verified_at", "-id"]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(declared=True, proof_checked=True), name="core_residence_evidence_checked"),
+            models.UniqueConstraint(fields=["person"], condition=models.Q(revoked_at__isnull=True), name="core_one_current_residence"),
+        ]
+
+
 class Modality(models.Model):
     price_category = models.PositiveSmallIntegerField(null=True, blank=True, choices=[(i, f'Atividade {i}') for i in range(1, 8)])
     enrollment_fee_kind = models.CharField(max_length=12, blank=True, choices=[('standard', 'Convencional'), ('rhythmic', 'Ginástica Rítmica')])

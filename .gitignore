@@ -12,3 +12,6 @@ coverage/
 test-results/
 .env.*
 !.env.example
+
+# Prompts e documentos de trabalho interno
+promptimpmodalidades.md

@@ -29,6 +29,8 @@ import type { LucideIcon } from "lucide-react";
 import { useAuth, isAdmin, Login } from "./auth";
 import { Loading, Button, ErrorNotice, Notice, PageTitle } from "./ui";
 import { roleNames } from "./format";
+import { ThemeProvider, ThemeToggle } from "./theme";
+import { EcoWork, personSpec, condominiumSpec, associationSpec, residenceSpec } from "./EcoWork";
 import { ResourceList, StudentDetail } from "./resources";
 import {
   studentSpec,
@@ -96,6 +98,8 @@ const groups: { label: string; items: NavItem[] }[] = [
     label: "GESTÃO",
     items: [
       { path: "/financeiro", label: "Financeiro", icon: Wallet, admin: true },
+      { path: "/ecowork", label: "EcoWork", icon: Wallet, admin: true },
+      { path: "/pessoas", label: "Pessoas", icon: UsersRound, admin: true },
       { path: "/relatorios", label: "Relatórios", icon: ChartNoAxesCombined },
       {
         path: "/acessos",
@@ -121,6 +125,7 @@ function Shell() {
   if (user.access_status !== "approved" || !user.roles.length)
     return (
       <div className="access-state">
+        <ThemeToggle />
         <Link className="wordmark" to="/login">
           movi<span>+</span>
         </Link>
@@ -145,14 +150,17 @@ function Shell() {
         <Link to="/" className="wordmark">
           movi<span>+</span>
         </Link>
-        <Button
-          variant="ghost"
-          aria-label={navOpen ? "Fechar navegação" : "Abrir navegação"}
-          aria-expanded={navOpen}
-          onClick={() => setNavOpen(!navOpen)}
-        >
-          {navOpen ? <X /> : <Menu />}
-        </Button>
+        <div className="mobile-bar-actions">
+          <ThemeToggle compact />
+          <Button
+            variant="ghost"
+            aria-label={navOpen ? "Fechar navegação" : "Abrir navegação"}
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen(!navOpen)}
+          >
+            {navOpen ? <X /> : <Menu />}
+          </Button>
+        </div>
       </header>
       {navOpen && (
         <button
@@ -201,6 +209,7 @@ function Shell() {
           })}
         </nav>
         <div className="sidebar-bottom">
+          <ThemeToggle />
           <Link className="help-link" to="/politicas">
             Regras e decisões <ArrowUpRight size={15} />
           </Link>
@@ -323,57 +332,64 @@ export function App() {
     document.getElementById("main-content")?.focus({ preventScroll: true });
   }, [pathname]);
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/solicitar-acesso" element={<Login register />} />
-      <Route element={<Shell />}>
-        <Route index element={<Dashboard />} />
-        <Route element={<AdminGuard />}>
-          <Route
-            path="alunos"
-            element={<ResourceList key="students" spec={studentSpec} />}
-          />
-          <Route path="alunos/:id" element={<StudentDetail />} />
-          <Route
-            path="matriculas"
-            element={<ResourceList key="enrollments" spec={enrollmentSpec} />}
-          />
-          <Route path="matriculas/:id" element={<EnrollmentDetail />} />
-          {[leadSpec, modalitySpec, instructorSpec].map((spec) => (
-            <Route key={spec.slug} path={spec.slug}>
-              <Route
-                index
-                element={<ResourceList key={spec.slug} spec={spec} />}
-              />
-              <Route
-                path=":id"
-                element={<RecordDetail key={spec.slug} spec={spec} />}
-              />
-            </Route>
-          ))}
-          <Route path="financeiro" element={<Finance />} />
-          <Route
-            path="cobrancas"
-            element={<Navigate to="/financeiro" replace />}
-          />
-          <Route path="cobrancas/:id" element={<ChargeDetail />} />
-          <Route path="recebimentos" element={<Finance payments />} />
-          <Route path="recebimentos/:id" element={<PaymentDetail />} />
-          <Route path="acessos" element={<AccessList />} />
-          <Route path="acessos/:id" element={<AccessDetail />} />
-          <Route path="auditoria" element={<AuditList />} />
-          <Route path="auditoria/:id" element={<AuditDetail />} />
+    <ThemeProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/solicitar-acesso" element={<Login register />} />
+        <Route element={<Shell />}>
+          <Route index element={<Dashboard />} />
+          <Route element={<AdminGuard />}>
+            <Route path="ecowork" element={<EcoWork />} />
+            {[personSpec, condominiumSpec, associationSpec, residenceSpec].map(spec => <Route key={spec.slug} path={spec.slug}>
+              <Route index element={<ResourceList key={spec.slug} spec={spec} />} />
+              <Route path=":id" element={<RecordDetail key={spec.slug} spec={spec} />} />
+            </Route>)}
+            <Route
+              path="alunos"
+              element={<ResourceList key="students" spec={studentSpec} />}
+            />
+            <Route path="alunos/:id" element={<StudentDetail />} />
+            <Route
+              path="matriculas"
+              element={<ResourceList key="enrollments" spec={enrollmentSpec} />}
+            />
+            <Route path="matriculas/:id" element={<EnrollmentDetail />} />
+            {[leadSpec, modalitySpec, instructorSpec].map((spec) => (
+              <Route key={spec.slug} path={spec.slug}>
+                <Route
+                  index
+                  element={<ResourceList key={spec.slug} spec={spec} />}
+                />
+                <Route
+                  path=":id"
+                  element={<RecordDetail key={spec.slug} spec={spec} />}
+                />
+              </Route>
+            ))}
+            <Route path="financeiro" element={<Finance />} />
+            <Route
+              path="cobrancas"
+              element={<Navigate to="/financeiro" replace />}
+            />
+            <Route path="cobrancas/:id" element={<ChargeDetail />} />
+            <Route path="recebimentos" element={<Finance payments />} />
+            <Route path="recebimentos/:id" element={<PaymentDetail />} />
+            <Route path="acessos" element={<AccessList />} />
+            <Route path="acessos/:id" element={<AccessDetail />} />
+            <Route path="auditoria" element={<AuditList />} />
+            <Route path="auditoria/:id" element={<AuditDetail />} />
+          </Route>
+          <Route element={<AcademicGuard />}>
+            <Route path="turmas" element={<AcademicList classes />} />
+            <Route path="turmas/:id" element={<ClassDetail />} />
+            <Route path="aulas" element={<AcademicList />} />
+            <Route path="aulas/:id" element={<LessonDetail />} />
+          </Route>
+          <Route path="relatorios" element={<Reports />} />
+          <Route path="politicas" element={<PoliciesPage />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route element={<AcademicGuard />}>
-          <Route path="turmas" element={<AcademicList classes />} />
-          <Route path="turmas/:id" element={<ClassDetail />} />
-          <Route path="aulas" element={<AcademicList />} />
-          <Route path="aulas/:id" element={<LessonDetail />} />
-        </Route>
-        <Route path="relatorios" element={<Reports />} />
-        <Route path="politicas" element={<PoliciesPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </ThemeProvider>
   );
 }

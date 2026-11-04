@@ -68,10 +68,24 @@ Para parar somente esse cluster:
 Em um banco vazio e exclusivo de desenvolvimento, configure `DEBUG=true` e `DEMO_MODE=true` em `.env` e execute:
 
 ```powershell
+.\.venv\Scripts\python.exe backend\manage.py migrate
 .\.venv\Scripts\python.exe backend\manage.py seed_demo --password 'Movi-demo-2026!'
 ```
 
-Contas: `secretaria@example.test`, `instrutor@example.test`, `comunicacao@example.test`. Use a senha passada no comando. A conta `solicitante@example.test` demonstra uma solicitação pendente, sem senha utilizável. Nenhum CPF ou dado pessoal real é incluído. Cada registro sintético é identificado e a interface informa o ambiente de demonstração. O comando é idempotente e recusa banco previamente preenchido sem marcador de demonstração. Não habilita propostas nem políticas por conta própria. Cadastros feitos manualmente no ambiente demo persistem nesse banco.
+Contas: `coordenacao@example.test`, `secretaria@example.test`, `instrutor@example.test`, `comunicacao@example.test`. Novas contas usam a senha passada no comando (mínimo 12 caracteres); contas existentes mantêm sua senha. A conta `solicitante@example.test` demonstra uma solicitação pendente, sem senha utilizável. Nenhum CPF ou dado pessoal real é incluído. Cada registro sintético é identificado e a interface informa o ambiente de demonstração.
+
+Em um banco vazio, o seed cria:
+
+- 14 alunos, 6 modalidades, 4 instrutores, 6 turmas e 8 aulas agendadas.
+- 8 matrículas legadas e 6 contratos trimestrais/anuais com cronogramas, taxas, parcelas e histórico comercial.
+- Cenários de contrato regular, aguardando ativação, parcela atrasada, cancelamento, associado anual e somente taxa paga; cobranças abertas, vencidas e pagas.
+- 5 leads cobrindo todos os estados do funil, incluindo conversão vinculada a aluno.
+
+As duas turmas `Contratos … • turma de demonstração` usam ofertas sintéticas parametrizadas para cartão 2026, categorias 1/2 e taxas convencional/rítmica. Elas permitem testar a chamada com alunos liberados e bloqueados, usando a conta de instrutor. A categoria de atividades reais não é presumida. Aulas são criadas na data de referência e sete dias depois; nenhuma presença é lançada automaticamente.
+
+O comando é transacional e recusa banco previamente preenchido sem marcador de demonstração, inclusive se houver somente modalidades. Pode ser executado novamente: após a aplicação completa, não recria registros, redefine senhas nem desfaz alterações manuais. Um banco preparado pela versão antiga recebe os novos cenários sem modificar suas matrículas legadas. O seed não habilita propostas nem altera políticas.
+
+A data de referência padrão é o dia da primeira execução e fica registrada no banco. Para uma demonstração histórica reproduzível, acrescente `--date 2026-11-04` ao comando. A tabela disponível exige uma data de 2026 e não aceita data futura; para mudar a referência após o seed, use outro banco demo vazio. Datas anteriores a 16/01/2026 ainda não têm parcela contratual vencida. A interface calcula os estados financeiros pela data real: com o passar do tempo, parcelas vencem e contratos expiram. Reexecutar o seed preserva as datas originais.
 
 ## Verificações
 

@@ -10,6 +10,8 @@ import "@fontsource/manrope/latin-800.css";
 import "./styles.css";
 import { AuthProvider } from "./auth";
 import { App } from "./App";
+import { initializeTheme } from "./theme";
+initializeTheme();
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15000, refetchOnWindowFocus: true } },
 });

@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   font-family: "Manrope", "Segoe UI", sans-serif;
   color: var(--ink);
   background: var(--canvas);
@@ -28,10 +29,40 @@
   --control-border: rgba(0, 0, 0, 0.2);
   --focus: #8a2527;
   --inverse-secondary: #d4d4d4;
+  --inverse: #ffffff;
+  --inverse-surface: #111111;
+  --on-brand: #ffffff;
   --radius-control: 8px;
   --radius-sheet: 12px;
   --radius-modal: 16px;
   --space: 4px;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #141414;
+  --sheet: #1c1c1c;
+  --surface-muted: #262626;
+  --ink: #f5f5f5;
+  --ink-secondary: #c4c4c4;
+  --ink-tertiary: #a3a3a3;
+  --ink-muted: #858585;
+  --brand: #ee9295;
+  --brand-hover: #f5afb1;
+  --brand-tint: #352326;
+  --info: #d4d4d4;
+  --info-tint: #262626;
+  --warning: #ee9295;
+  --warning-surface: #302123;
+  --danger: #ee9295;
+  --danger-surface: #302123;
+  --success: #dedede;
+  --success-surface: #262626;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --control-bg: #181818;
+  --control-border: rgba(255, 255, 255, 0.25);
+  --focus: #ee9295;
+  --on-brand: #241214;
 }
 * {
   box-sizing: border-box;
@@ -172,7 +203,7 @@ input[type="radio"] {
   opacity: 0.48;
 }
 .button--primary {
-  color: var(--sheet);
+  color: var(--on-brand);
   background: var(--brand);
 }
 .button--primary:hover:not(:disabled) {
@@ -196,7 +227,7 @@ input[type="radio"] {
   background: var(--surface-muted);
 }
 .button--danger {
-  color: var(--sheet);
+  color: var(--on-brand);
   background: var(--danger);
 }
 .button--danger:hover:not(:disabled) {
@@ -250,7 +281,7 @@ input[type="radio"] {
   left: 16px;
   padding: 12px 16px;
   background: var(--brand);
-  color: var(--sheet);
+  color: var(--on-brand);
   border-radius: 8px;
 }
 .skip-link:focus {
@@ -319,6 +350,21 @@ input[type="radio"] {
 .sidebar-bottom {
   margin-top: auto;
   padding-top: 24px;
+}
+.theme-toggle {
+  min-width: 44px;
+}
+.sidebar-bottom > .theme-toggle {
+  width: 100%;
+  justify-content: flex-start;
+  padding-inline: 16px;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.mobile-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .help-link {
   font-size: 12px;
@@ -1081,11 +1127,11 @@ dd {
   gap: 60px;
   min-height: 100vh;
   padding: 48px 64px;
-  background: var(--ink);
-  color: var(--sheet);
+  background: var(--inverse-surface);
+  color: var(--inverse);
 }
 .auth-story .wordmark {
-  color: var(--sheet);
+  color: var(--inverse);
 }
 .auth-story .wordmark span {
   color: var(--brand);
@@ -1132,13 +1178,19 @@ dd {
   color: var(--inverse-secondary);
 }
 .auth-note strong {
-  color: var(--sheet);
+  color: var(--inverse);
 }
 .auth-form {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 48px;
+}
+.auth-theme-control {
+  position: absolute;
+  top: 16px;
+  right: 20px;
 }
 .auth-form__inner {
   width: 100%;
