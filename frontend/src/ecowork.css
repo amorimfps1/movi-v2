@@ -9,10 +9,14 @@
 .ecowork-facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ecowork-facts .badge { display: block; margin-top: 8px; width: fit-content; }
 .ecowork-fields { border: 0; padding: 0; margin: 0; display: grid; gap: 16px; min-width: 0; }
+.ecowork-filters { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
 .ecowork-price { padding: 20px; background: var(--surface-muted); border-radius: var(--radius-control); display: grid; gap: 6px; }
 .ecowork-price strong { font-size: 28px; font-variant-numeric: tabular-nums; }
 .ecowork-price span, .ecowork-price small { color: var(--ink-secondary); }
 .ecowork-check { display: flex; align-items: start; gap: 12px; }
 .ecowork-check input { width: 20px; height: 20px; flex-shrink: 0; }
+.ecowork-financial-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ecowork-history { margin-top: 24px; overflow-wrap: anywhere; }
+.ecowork-history summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
 @media (max-width: 800px) { .ecowork-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ecowork-order { padding: 16px; } }
 @media (max-width: 450px) { .ecowork-facts { grid-template-columns: 1fr; } }

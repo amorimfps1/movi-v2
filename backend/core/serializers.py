@@ -2,7 +2,7 @@ from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from .models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Student, User
+from .models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Person, User
 from .permissions import ROLES
 from .policies import DecisionRequired, approved
 from .validators import normalize_cpf, validate_weekdays
@@ -72,11 +72,11 @@ class ReasonSerializer(serializers.Serializer):
     reason = serializers.CharField(allow_blank=False, max_length=2000)
 
 
-class StudentSerializer(serializers.ModelSerializer):
+class PersonSerializer(serializers.ModelSerializer):
     cpf = CPFSerializerField(required=False, allow_blank=True, max_length=18)
 
     class Meta:
-        model = Student
+        model = Person
         fields = ["id", "name", "cpf", "email", "phone", "birth_date", "address", "notes", "archived", "created_at"]
         read_only_fields = ["id", "created_at"]
 
@@ -85,7 +85,7 @@ class StudentSerializer(serializers.ModelSerializer):
 
     def validate_cpf(self, value):
         if value and approved("RN-013"):
-            matches = Student.objects.filter(cpf=value)
+            matches = Person.objects.filter(cpf=value)
             if self.instance:
                 matches = matches.exclude(pk=self.instance.pk)
             if matches.exists():

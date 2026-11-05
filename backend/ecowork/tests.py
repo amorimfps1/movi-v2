@@ -4,14 +4,14 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from core.models import AuditEvent, Condominium, CondominiumAssociation, Person, ResidenceVerification, Student, User
+from core.models import AuditEvent, Condominium, CondominiumAssociation, Person, ResidenceVerification, User
 
 
 class EcoWorkFoundationTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.operator = User.objects.create_user(email="eco@example.test", password="test-password", access_status="approved", roles=["secretary"])
-        cls.person = Student.objects.create(name="Moradora existente")
+        cls.person = Person.objects.create(name="Moradora existente")
         cls.condominium = Condominium.objects.create(name="Condomínio de teste")
 
     def setUp(self):
@@ -35,7 +35,7 @@ class EcoWorkFoundationTests(APITestCase):
         return response.data
 
     def test_people_share_identity_and_history_with_academic_api(self):
-        self.assertIs(Person, Student)
+        self.assertEqual(Person._meta.db_table, "core_student")
         response = self.client.patch(f"/api/people/{self.person.pk}/", {"phone": "11999999999"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.client.get(f"/api/students/{self.person.pk}/").data["phone"], "11999999999")

@@ -22,6 +22,7 @@ export type ResourceSpec = {
   archive?: string;
   readOnly?: boolean;
   editable?: boolean;
+  fixedParams?: Record<string, string>;
 };
 export const studentSpec: ResourceSpec = {
   title: "Alunos",

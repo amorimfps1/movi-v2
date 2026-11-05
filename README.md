@@ -1,5 +1,7 @@
 # MOVI+
 
+**Retomada atual — 05/11/2026:** cadastro central `Person`, visão acadêmica filtrada e consultas EcoWork por pessoa implementados. Consulte [progresso](docs/progress.md) e [EcoWork](docs/ecowork-implementacao.md). Aplique as migrations antes de usar esta versão; `core.0004_person_identity` mantém a tabela e os IDs existentes. Banco operacional não migrado durante a implementação.
+
 **Contratos 2026 e chamada (03/11/2026):** implementados conforme `promptimpmodalidades.md`. Consulte [regras, migrations e pendências](docs/contracts-2026.md) antes de parametrizar modalidades. Os valores incompletos da planilha não foram presumidos. Execute as migrations antes de usar esta versão.
 
 Aplicação de gestão de alunos, matrículas e leads em React/TypeScript, Django REST Framework e PostgreSQL. Interface em português, tema branco/preto/vermelho conforme a marca, valores em reais e datas civis em `America/Sao_Paulo`.

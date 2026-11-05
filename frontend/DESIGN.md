@@ -1,5 +1,11 @@
 # Direção MOVI+
 
+## Cadastro central e consultas — 05/11/2026
+
+Intenção: secretaria identifica a pessoa e verifica vínculos e dívidas anteriores antes de registrar outra operação. Domínio: cadastro, matrícula, contratação, parcela, vigência, vencimento e quitação. Assinatura preservada: cobertura do plano e saldo financeiro são informações distintas, com resumo de todo o histórico ao lado da ficha. Evitados novos indicadores decorativos, paleta adicional e controles customizados.
+
+Hierarquia: nome da pessoa abre a ficha; resumo destaca os valores em lista de definições; filtros precedem contratos e não ocultam parcelas históricas dentro de cada contrato. Paleta/superfícies: branco, preto, cinza dos controles, vermelho da marca e vermelho suave de impedimentos, herdando tokens e temas existentes. Profundidade: bordas discretas, sem sombras novas. Manrope e pesos existentes; base 4px, campos separados por 16px e seções por 24px. Filtros em grid responsivo, controles nativos e Field/Button/Notice existentes. Inspeção desktop e celular sem overflow; detalhes em `docs/ecowork-implementacao.md`.
+
 ## EcoWork — 04/11/2026
 
 Intenção: secretaria localiza o frequentador, confere validade e pendências e registra somente recebimentos confirmados. Domínio: pessoa, condomínio associado, residência conferida, plano, parcela, cobertura e quitação. Assinatura: condição associativa → desconto preservado → primeira parcela → vigência, com cobertura sempre separada do saldo financeiro.

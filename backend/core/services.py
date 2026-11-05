@@ -2,7 +2,7 @@ from django.db import transaction
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 
 from .audit import record
-from .models import Instructor, Lead, OperationLock, Student, User
+from .models import Instructor, Lead, OperationLock, Person, User
 from .permissions import is_administrative
 from .policies import DecisionRequired, approved
 
@@ -92,8 +92,8 @@ def convert_lead(actor, lead_id, data):
         return lead, False
     if not approved("RN-016"):
         raise DecisionRequired("A conversão com vínculo preservado requer aprovação da RN-016 e definição da identidade do aluno.", ["RN-016", "DN-003"])
-    cpf_ids = set(Student.objects.filter(cpf=lead.cpf).values_list("id", flat=True)) if lead.cpf else set()
-    email_ids = set(Student.objects.filter(email__iexact=lead.email).values_list("id", flat=True)) if lead.email else set()
+    cpf_ids = set(Person.objects.filter(cpf=lead.cpf).values_list("id", flat=True)) if lead.cpf else set()
+    email_ids = set(Person.objects.filter(email__iexact=lead.email).values_list("id", flat=True)) if lead.email else set()
     candidate_ids = cpf_ids | email_ids
     conflict = len(candidate_ids) > 1
     selected_id = data.get("student_id")
@@ -102,17 +102,17 @@ def convert_lead(actor, lead_id, data):
     if selected_id is not None:
         if conflict and not data.get("reason"):
             raise ValidationError({"reason": "Registre a justificativa da resolução de identidade."})
-        student = Student.objects.select_for_update().filter(pk=selected_id).first()
+        student = Person.objects.select_for_update().filter(pk=selected_id).first()
         if student is None or student.archived:
             raise ValidationError({"student_id": "Selecione um aluno existente e não arquivado."})
         if candidate_ids and selected_id not in candidate_ids:
             raise ValidationError({"student_id": "O aluno selecionado não corresponde ao CPF ou e-mail encontrado."})
     elif candidate_ids:
-        student = Student.objects.select_for_update().get(pk=next(iter(candidate_ids)))
+        student = Person.objects.select_for_update().get(pk=next(iter(candidate_ids)))
         if student.archived:
             raise DecisionRequired("O cadastro correspondente está arquivado. Resolva a identidade e os efeitos do arquivamento antes de converter.", ["DN-003", "DN-021"])
     else:
-        student = Student.objects.create(name=lead.name, cpf=lead.cpf, email=lead.email, phone=lead.phone)
+        student = Person.objects.create(name=lead.name, cpf=lead.cpf, email=lead.email, phone=lead.phone)
     lead.student, lead.status = student, "converted"
     lead.save(update_fields=["student", "status"])
     record(actor, "lead.convert", lead, reason=data.get("reason", ""), metadata={"student_id": student.pk, "identity_resolved": conflict, "candidate_ids": sorted(candidate_ids), "enrollment_created": False})

@@ -2,6 +2,14 @@
 
 Este é o ponto de entrada para continuar o desenvolvimento. Requisitos e decisões estão em `requirements.md` e `decisions.md`; evidências de execução estão em `verification.md`.
 
+## Cadastro central e consultas EcoWork — 05/11/2026
+
+Retomada da segunda entrega EcoWork (`ee49ddd`). `Person` agora é o modelo real, mantendo tabela física `core_student`, IDs, relações e identidade histórica da auditoria. O alias e os imports antigos foram removidos; endpoints acadêmicos permanecem compatíveis. Migration `core.0004_person_identity` preserva content types e concessões de permissões. Aplicada apenas em testes e cópia sintética de prévia, não no banco operacional.
+
+Lista de alunos e contador do painel consideram pessoas com matrícula acadêmica; Pessoas reúne todos os cadastros e permite filtrar vínculos acadêmicos/EcoWork. Ficha da pessoa mostra totais EcoWork de todo o histórico e atalhos para os dois módulos. EcoWork filtra cobertura, situação de parcela e intervalo de vencimento, preservando consulta e pessoa na URL. Filtros financeiros combinados devem corresponder à mesma parcela; a ficha exibe o contrato inteiro.
+
+Próximo passo: definir e implementar correção/cancelamento financeiro e renovação dedicada (incluindo sobreposição de planos), depois catálogo versionado e relatórios. Frequência permanece opcional. O plano completo ainda não está concluído. Detalhes e verificações atuais em `ecowork-implementacao.md`; os pontos de parada abaixo são históricos.
+
 ## Contratos e chamada — 03/11/2026
 
 Implementação do `promptimpmodalidades.md`: diagnóstico, regras, arquivos, migrations e pendências em [contracts-2026.md](contracts-2026.md). Cartão 2026, categorias 1–6, contratos trimestral/anual, primeira parcela + taxa para ativação, renovação sem nova taxa, WhatsApp manual e correção auditável de chamada. Legados preservados. Próximo passo institucional: conferir planilha, configurar modalidades e validar vencimentos provisórios. Evidências em `verification.md`. Registros abaixo descrevem etapas anteriores.

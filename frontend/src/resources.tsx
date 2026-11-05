@@ -107,6 +107,7 @@ export function ResourceList({
     page_size: "25",
     search,
     ...filters,
+    ...spec.fixedParams,
   });
   const query = useApi<Page<RecordData>>(`${spec.endpoint}?${params}`);
   const canExport = ["students/", "charges/", "payments/"].includes(

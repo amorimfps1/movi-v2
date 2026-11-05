@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
-from core.models import User, Student, Lead, ClassGroup
+from core.models import User, Person, Lead, ClassGroup
 from core.permissions import IsInternal, IsAdministrative, is_administrative
 from core.audit import record
 from core.services import lock_student_identities
@@ -53,7 +53,7 @@ class EnrollmentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins
         actor = locked_actor(self.request)
         lock_student_identities()
         group = ClassGroup.objects.select_for_update().get(pk=serializer.validated_data['class_group'].pk)
-        student = Student.objects.select_for_update().get(pk=serializer.validated_data['student'].pk)
+        student = Person.objects.select_for_update().get(pk=serializer.validated_data['student'].pk)
         if not group.active or student.archived:
             raise ValidationError('Aluno arquivado ou turma inativa. Atualize a oferta.')
         if serializer.validated_data.get('contract_version'):
@@ -326,7 +326,7 @@ class SummaryView(APIView):
         overdue = sum((max(c.amount-c.received,zero) for c in charges if c.due_date < today),zero)
         categories = {category: str(payments.filter(charge__category=category).aggregate(value=Sum('amount'))['value'] or zero)
                       for category in ['tuition','enrollment_fee','extra']}
-        result.update(students=Student.objects.filter(archived=False).count(),
+        result.update(students=Person.objects.filter(archived=False, enrollments__isnull=False).distinct().count(),
             enrollments=Enrollment.objects.filter(administrative_status='regular').count(),
             classes=ClassGroup.objects.filter(active=True).count(),
             pending_users=User.objects.filter(access_status='pending').count(),
@@ -353,8 +353,8 @@ class ExportView(APIView):
             raise ValidationError({'resource':'Selecione students, charges ou payments.'})
         cls = {'students':None,'charges':ChargeViewSet,'payments':PaymentViewSet}[resource]
         if resource == 'students':
-            from core.views import StudentViewSet
-            cls = StudentViewSet
+            from core.views import PersonViewSet
+            cls = PersonViewSet
         view = cls()
         view.request, view.action, view.format_kwarg = request, 'list', None
         qs = view.filter_queryset(view.get_queryset())

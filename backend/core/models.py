@@ -42,7 +42,7 @@ class User(AbstractUser):
         ordering = ["id"]
 
 
-class Student(models.Model):
+class Person(models.Model):
     name = models.CharField(max_length=200)
     cpf = models.CharField(max_length=11, blank=True, db_index=True, validators=[normalize_cpf])
     email = models.EmailField(blank=True)
@@ -54,6 +54,7 @@ class Student(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = "core_student"
         ordering = ["name", "id"]
 
     def save(self, *args, **kwargs):
@@ -63,11 +64,6 @@ class Student(models.Model):
 
     def __str__(self):
         return self.name
-
-
-# Transitional name for the SAME identity table. Keep historical model labels,
-# audit targets and academic foreign keys until their coordinated migration.
-Person = Student
 
 
 class Condominium(models.Model):
@@ -95,7 +91,7 @@ class CondominiumAssociation(models.Model):
 
 
 class ResidenceVerification(models.Model):
-    person = models.ForeignKey(Student, on_delete=models.PROTECT, related_name="residence_verifications")
+    person = models.ForeignKey(Person, on_delete=models.PROTECT, related_name="residence_verifications")
     condominium = models.ForeignKey(Condominium, on_delete=models.PROTECT, related_name="residence_verifications")
     declared = models.BooleanField()
     proof_checked = models.BooleanField()
@@ -183,7 +179,7 @@ class Lead(models.Model):
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.NEW)
     interests = models.ManyToManyField(Modality, related_name="leads", blank=True)
     notes = models.TextField(blank=True)
-    student = models.ForeignKey(Student, null=True, blank=True, related_name="leads", on_delete=models.PROTECT)
+    student = models.ForeignKey(Person, null=True, blank=True, related_name="leads", on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

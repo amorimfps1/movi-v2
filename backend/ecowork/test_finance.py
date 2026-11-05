@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from core.models import User, Student, Condominium, CondominiumAssociation, ResidenceVerification
+from core.models import User, Person, Condominium, CondominiumAssociation, ResidenceVerification
 from .finance import add_months
 from .models import Order, Payment
 
@@ -14,7 +14,7 @@ from .models import Order, Payment
 class FinanceTests(APITestCase):
     def setUp(self):
         self.actor = User.objects.create_user(email='finance@example.test', password='test', roles=['secretary'], access_status='approved')
-        self.person = Student.objects.create(name='Pessoa EcoWork')
+        self.person = Person.objects.create(name='Pessoa EcoWork')
         self.client.force_authenticate(self.actor)
 
     def create_order(self, **changes):

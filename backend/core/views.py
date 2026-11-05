@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.pagination import PageNumberPagination
+from config.pagination import StandardPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -17,20 +17,15 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
 
 from .audit import record
-from .models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Student, User
+from .filters import PersonFilter, with_person_links
+from .models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Person, User
 from .permissions import IsAdministrative, IsInternal, is_administrative, is_internal
 from .serializers import (
     AccessRoleSerializer, AccessRolesSerializer, AuditSerializer, ClassGroupSerializer,
     ConvertSerializer, InstructorSerializer, LeadSerializer, LoginSerializer,
-    ModalitySerializer, ReasonSerializer, RegisterSerializer, StudentSerializer, UserSerializer,
+    ModalitySerializer, ReasonSerializer, RegisterSerializer, PersonSerializer, UserSerializer,
 )
 from .services import change_access, convert_lead, lock_admin, lock_student_identities
-
-
-class StandardPagination(PageNumberPagination):
-    page_size = 25
-    page_size_query_param = "page_size"
-    max_page_size = 100
 
 
 class ListConfiguration:
@@ -160,7 +155,7 @@ class AdministrativeModelViewSet(ListConfiguration, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "put", "patch", "head", "options"]
 
     def _lock_dependencies(self):
-        if self.queryset.model is Student:
+        if self.queryset.model is Person:
             lock_student_identities()
             if self.kwargs.get("pk") and apps.is_installed("billing"):
                 enrollment_model = apps.get_model("billing", "Enrollment")
@@ -188,18 +183,20 @@ class AdministrativeModelViewSet(ListConfiguration, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        record(self.request.user, f"{instance._meta.model_name}.create", instance)
+        name = "student" if instance._meta.model_name == "person" else instance._meta.model_name
+        record(self.request.user, f"{name}.create", instance)
 
     def perform_update(self, serializer):
         before = dict(self.get_serializer(serializer.instance).data)
         instance = serializer.save()
-        record(self.request.user, f"{instance._meta.model_name}.update", instance, metadata={"before": before, "after": dict(self.get_serializer(instance).data)})
+        name = "student" if instance._meta.model_name == "person" else instance._meta.model_name
+        record(self.request.user, f"{name}.update", instance, metadata={"before": before, "after": dict(self.get_serializer(instance).data)})
 
 
-class StudentViewSet(AdministrativeModelViewSet):
-    queryset = Student.objects.all()
-    serializer_class = StudentSerializer
-    filterset_fields = ["archived"]
+class PersonViewSet(AdministrativeModelViewSet):
+    queryset = with_person_links(Person.objects.all())
+    serializer_class = PersonSerializer
+    filterset_class = PersonFilter
     search_fields = ["name", "cpf", "email", "phone"]
     ordering_fields = ["id", "name", "created_at"]
 
