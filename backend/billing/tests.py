@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from core.models import User, Student, Modality, Instructor, ClassGroup, AuditEvent
+from core.models import User, Person, Modality, Instructor, ClassGroup, AuditEvent
 from .models import Enrollment, Charge, Payment
 from .services import evaluate_eligibility
 
@@ -20,7 +20,7 @@ from django.test import TransactionTestCase
 class FinancialTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(email='finance@example.test',password='Movi-test-2026!',access_status='approved',roles=['secretary'])
-        self.student = Student.objects.create(name='Aluno de teste')
+        self.student = Person.objects.create(name='Aluno de teste')
         modality = Modality.objects.create(name='Música',default_price='100.00')
         instructor = Instructor.objects.create(name='Instrutor de teste')
         self.group = ClassGroup.objects.create(name='Grupo de teste',modality=modality,instructor=instructor,
@@ -30,6 +30,14 @@ class FinancialTests(TestCase):
             plan='monthly',amount='100.00')
         self.client = APIClient()
         self.client.force_authenticate(self.admin)
+
+    def test_academic_count_and_list_exclude_people_without_enrollment(self):
+        Person.objects.create(name='Frequentador sem matrícula')
+        Enrollment.objects.create(student=self.student, class_group=self.group, start_date=self.today, plan='monthly', amount='100.00')
+        result = self.client.get('/api/reports/summary/')
+        self.assertEqual(result.data['students'], 1)
+        result = self.client.get('/api/students/?has_enrollments=true')
+        self.assertEqual([row['id'] for row in result.data['results']], [self.student.pk])
 
     def charge(self,category='tuition',due=None):
         return Charge.objects.create(enrollment=self.enrollment,category=category,
@@ -198,7 +206,7 @@ class FinancialTests(TestCase):
 class FinancialConcurrencyTests(TransactionTestCase):
     def setUp(self):
         self.users = [User.objects.create_user(email=f'finance{i}@example.test',password='test-only',access_status='approved',roles=['secretary']) for i in range(2)]
-        student = Student.objects.create(name='Concorrência sintética')
+        student = Person.objects.create(name='Concorrência sintética')
         modality = Modality.objects.create(name='Atividade',default_price='100.00')
         instructor = Instructor.objects.create(name='Equipe')
         group = ClassGroup.objects.create(name='Oferta',modality=modality,instructor=instructor,

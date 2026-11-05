@@ -4,6 +4,16 @@ Implementação e verificações: 7–8 de outubro de 2026, America/Sao_Paulo.
 
 Este documento distingue execução técnica de homologação institucional. Nenhum teste aprova uma regra proposta ou resolve uma DN.
 
+## Cadastro central e consultas EcoWork — 05/11/2026
+
+- PostgreSQL 16 já existente: **133 testes aprovados, nenhum skip**, em 119,964s. Banco temporário `test_movi_ecowork_tests` criado e destruído pela suíte. Nenhum container iniciado. Inclui migração de cadastro preexistente, referências, auditoria e concessão de permissões, filtros combinados na mesma parcela, resumo financeiro com dívida anterior, separação acadêmica sem duplicação e os testes concorrentes existentes.
+- Frontend: **37 testes em nove arquivos aprovados**, 15,02s; TypeScript e build Vite aprovados. Novos cenários cobrem restauração de filtros, descarte de parâmetros desconhecidos, saldo consolidado e filtro acadêmico preservado na exportação. Um seletor de teste antigo tornou-se ambíguo ao introduzir a opção de cobertura; foi corrigido para conferir o estado no contrato.
+- `makemigrations --check --dry-run`: nenhuma divergência. OpenAPI regenerado em `docs/openapi.yaml`, validado sem erros/avisos. `git diff --check`: sem erros.
+- Chrome headless: login, ficha da pessoa, resumo de todas as contratações, navegação ao EcoWork com ID exato, filtro de parcela, recarga e lista acadêmica. Desktop 1440×1000 e celular 390×844; largura da página e do conteúdo 390/390, nenhum `pageerror`. Imagens em `.local/person-desktop.png`, `.local/person-mobile.png` e `.local/person-filters-mobile.png`.
+- Prévia em 5177/8004 usou cópia do banco sintético antigo (`.local/person-preview.sqlite3`), migrada para a versão nova. Banco operacional preservado. PostgreSQL, esbuild e navegador exigiram execução fora do sandbox por restrições locais de acesso; verificações concluíram com sucesso.
+
+Limites: correções financeiras, cancelamento/estorno e renovação dedicada não foram implementados nem homologados nesta entrega. O alias antigo foi removido; rotas, campos acadêmicos e identidade de auditoria mantidos são compatibilidade ativa. Aplicar migrations antes de usar o código no banco operacional. Próximo ponto de retomada em `progress.md`.
+
 ## Contratos 2026 — 03/11/2026
 
 Implementação e decisões em [contracts-2026.md](contracts-2026.md). Migrations core 0002 e billing 0003/0004 aplicadas ao PostgreSQL de demonstração separado; banco original não migrado nesta execução.

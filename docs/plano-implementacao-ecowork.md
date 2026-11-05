@@ -2,6 +2,8 @@
 
 Data: 04/11/2026. Status: fundação, contratação, parcelamento, recebimentos e interface inicial implementados. Migrations exercitadas em ambientes isolados; banco operacional preservado.
 
+Atualização de 05/11/2026: cadastro central migrado logicamente para `Person`, tabela/IDs preservados; separação da visão acadêmica, resumo EcoWork por pessoa e filtros financeiros entregues. Migration e percurso de navegador verificados em ambientes isolados. As pendências de alias e consultas descritas nas entregas históricas abaixo foram substituídas; correção/cancelamento, renovação dedicada, catálogo versionado e relatórios continuam pendentes. Ver `ecowork-implementacao.md` e `verification.md`.
+
 ### Progresso da segunda entrega
 
 Contratos/vendas avulsas, cobranças e quitação integral estão implementados, com preço/desconto preservados, idempotência, concorrência e auditoria. A tela EcoWork integra contratação, consulta de parcelas, saldo, vigência e confirmação de recebimento. Cadastros compartilhados, condomínios e residência possuem telas iniciais. Foram confirmados vencimentos mensais ajustados para meses curtos e aprovação da compra no cartão como início da vigência. Verificação: 127 testes PostgreSQL sem skips, 34 testes frontend, build e fluxo de navegador desktop/celular aprovados.

@@ -8,7 +8,7 @@ from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase, override_settings
 from rest_framework.test import APIClient, APITestCase
 
-from core.models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Student, User
+from core.models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Person, User
 from core.services import change_access, convert_lead
 
 
@@ -152,19 +152,19 @@ class StudentTests(CoreFixtures):
 
     @override_settings(BUSINESS_APPROVALS=[])
     def test_duplicate_proposal_not_assumed_approved(self):
-        Student.objects.create(name="Original", cpf="52998224725")
+        Person.objects.create(name="Original", cpf="52998224725")
         self.assertEqual(self.client.post("/api/students/", {"name": "Outro", "cpf": "529.982.247-25"}, format="json").status_code, 201)
 
     @override_settings(BUSINESS_APPROVALS=["RN-013"])
     def test_approved_duplicate_rule_blocks_equivalent_cpfs(self):
-        original = Student.objects.create(name="Original", cpf="52998224725")
+        original = Person.objects.create(name="Original", cpf="52998224725")
         response = self.client.post("/api/students/", {"name": "Outro", "cpf": "529.982.247-25"}, format="json")
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(Student.objects.count(), 1)
+        self.assertEqual(Person.objects.count(), 1)
         self.assertEqual(self.client.patch(f"/api/students/{original.pk}/", {"cpf": "529.982.247-25"}, format="json").status_code, 200)
 
     def test_delete_absent_and_archiving_pending_approval(self):
-        student = Student.objects.create(name="Histórico")
+        student = Person.objects.create(name="Histórico")
         url = f"/api/students/{student.pk}/"
         self.assertEqual(self.client.delete(url).status_code, 405)
         response = self.client.patch(url, {"archived": True}, format="json")
@@ -177,8 +177,8 @@ class StudentTests(CoreFixtures):
         self.assertTrue(AuditEvent.objects.filter(action="student.update", target_id=str(student.pk)).exists())
 
     def test_search_filters_order_and_pagination(self):
-        Student.objects.create(name="Ana", email="ana@example.com")
-        Student.objects.create(name="Bia", archived=True)
+        Person.objects.create(name="Ana", email="ana@example.com")
+        Person.objects.create(name="Bia", archived=True)
         response = self.client.get("/api/students/?search=Ana&archived=false&ordering=name&page_size=1")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 1)
@@ -197,7 +197,7 @@ class ConversionTests(CoreFixtures):
         response = self.client.post(self.url, {}, format="json")
         self.assertEqual(response.status_code, 409)
         self.assertIn("RN-016", response.data["decisions"])
-        self.assertEqual(Student.objects.count(), 0)
+        self.assertEqual(Person.objects.count(), 0)
 
     @override_settings(BUSINESS_APPROVALS=["RN-016"])
     def test_conversion_is_idempotent_does_not_enroll_and_preserves_history(self):
@@ -205,7 +205,7 @@ class ConversionTests(CoreFixtures):
         self.assertEqual(response.status_code, 200)
         second = self.client.post(self.url, {}, format="json")
         self.assertEqual(second.data["student"], response.data["student"])
-        self.assertEqual(Student.objects.count(), 1)
+        self.assertEqual(Person.objects.count(), 1)
         self.assertEqual(response.data["status"], "converted")
         self.assertEqual(AuditEvent.objects.filter(action="lead.convert").count(), 1)
         if apps.is_installed("billing"):
@@ -213,16 +213,16 @@ class ConversionTests(CoreFixtures):
 
     @override_settings(BUSINESS_APPROVALS=["RN-016"])
     def test_unique_match_reuses_student(self):
-        student = Student.objects.create(name="Já cadastrado", cpf=self.lead.cpf)
+        student = Person.objects.create(name="Já cadastrado", cpf=self.lead.cpf)
         response = self.client.post(self.url, {}, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["student"], student.pk)
-        self.assertEqual(Student.objects.count(), 1)
+        self.assertEqual(Person.objects.count(), 1)
 
     @override_settings(BUSINESS_APPROVALS=["RN-016"])
     def test_identity_conflict_requires_explicit_student_and_reason(self):
-        cpf_student = Student.objects.create(name="CPF", cpf=self.lead.cpf)
-        email_student = Student.objects.create(name="E-mail", email=self.lead.email)
+        cpf_student = Person.objects.create(name="CPF", cpf=self.lead.cpf)
+        email_student = Person.objects.create(name="E-mail", email=self.lead.email)
         response = self.client.post(self.url, {}, format="json")
         self.assertEqual(response.status_code, 409)
         self.lead.refresh_from_db()
@@ -236,8 +236,8 @@ class ConversionTests(CoreFixtures):
 
     @override_settings(BUSINESS_APPROVALS=["RN-016"])
     def test_shared_email_is_not_unique_identity(self):
-        Student.objects.create(name="Pessoa A", email=self.lead.email)
-        Student.objects.create(name="Pessoa B", email=self.lead.email)
+        Person.objects.create(name="Pessoa A", email=self.lead.email)
+        Person.objects.create(name="Pessoa B", email=self.lead.email)
         self.assertEqual(self.client.post(self.url, {}, format="json").status_code, 409)
 
     @override_settings(BUSINESS_APPROVALS=["RN-016"])
@@ -248,7 +248,7 @@ class ConversionTests(CoreFixtures):
         self.lead.refresh_from_db()
         self.assertIsNone(self.lead.student_id)
         self.assertEqual(self.lead.status, "new")
-        self.assertEqual(Student.objects.count(), 0)
+        self.assertEqual(Person.objects.count(), 0)
 
     def test_cannot_bypass_conversion_by_patching_status(self):
         response = self.client.patch(f"/api/leads/{self.lead.pk}/", {"status": "converted"}, format="json")
@@ -304,13 +304,13 @@ class PostgreSQLConcurrencyTests(TransactionTestCase):
     def test_concurrent_cpf_creation_has_one_winner(self):
         statuses = self._parallel(lambda client, index: client.post("/api/students/", {"name": f"Aluno {index}", "cpf": "529.982.247-25"}, format="json").status_code)
         self.assertEqual(sorted(statuses), [201, 400])
-        self.assertEqual(Student.objects.count(), 1)
+        self.assertEqual(Person.objects.count(), 1)
 
     def test_concurrent_conversion_creates_one_student(self):
         lead = Lead.objects.create(name="Conversão", cpf="52998224725")
         statuses = self._parallel(lambda client, index: client.post(f"/api/leads/{lead.pk}/convert/", {}, format="json").status_code)
         self.assertEqual(statuses, [200, 200])
-        self.assertEqual(Student.objects.count(), 1)
+        self.assertEqual(Person.objects.count(), 1)
         self.assertEqual(AuditEvent.objects.filter(action="lead.convert").count(), 1)
 
     def test_concurrent_approval_cannot_silently_replace_decision(self):
@@ -320,7 +320,7 @@ class PostgreSQLConcurrencyTests(TransactionTestCase):
         self.assertEqual(AuditEvent.objects.filter(action="access.approve", target_id=str(target.pk)).count(), 1)
 
     def test_concurrent_partial_updates_preserve_distinct_fields(self):
-        student = Student.objects.create(name="Original")
+        student = Person.objects.create(name="Original")
         payloads = [{"phone": "11999990000"}, {"email": "updated@example.com"}]
         statuses = self._parallel(lambda client, index: client.patch(f"/api/students/{student.pk}/", payloads[index], format="json").status_code)
         self.assertEqual(statuses, [200, 200])

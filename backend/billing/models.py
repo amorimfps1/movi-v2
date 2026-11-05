@@ -15,7 +15,7 @@ class Enrollment(models.Model):
     fee_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)
     renewed_from = models.OneToOneField('self', null=True, blank=True, on_delete=models.PROTECT, related_name='renewal', editable=False)
     schedule = models.JSONField(default=list, editable=False)
-    student = models.ForeignKey('core.Student', on_delete=models.PROTECT, related_name='enrollments')
+    student = models.ForeignKey('core.Person', on_delete=models.PROTECT, related_name='enrollments')
     class_group = models.ForeignKey('core.ClassGroup', on_delete=models.PROTECT, related_name='enrollments')
     start_date = models.DateField()
     plan = models.CharField(max_length=12, choices=[('monthly', 'Mensal'), ('quarterly', 'Trimestral'), ('yearly', 'Anual')])

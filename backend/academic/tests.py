@@ -15,7 +15,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
 
 from billing.models import Charge, Enrollment, Payment
-from core.models import AuditEvent, ClassGroup, Instructor, Modality, Student, User
+from core.models import AuditEvent, ClassGroup, Instructor, Modality, Person, User
 
 from .models import Attendance, Lesson
 
@@ -43,7 +43,7 @@ class AcademicFixtures:
         self.today = timezone.localdate()
         self.lesson = Lesson.objects.create(class_group=self.group, date=self.today)
         self.other_lesson = Lesson.objects.create(class_group=self.other_group, date=self.today)
-        self.students = [Student.objects.create(name=f"Participante teste {n}") for n in (1, 2)]
+        self.students = [Person.objects.create(name=f"Participante teste {n}") for n in (1, 2)]
         self.enrollments = [Enrollment.objects.create(student=student, class_group=self.group, start_date=self.today, plan="monthly", amount=Decimal("100.00")) for student in self.students]
         self.client = APIClient()
         self.client.force_authenticate(self.admin)

@@ -16,7 +16,7 @@ import {
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ResourceList } from "./resources";
-import { chargeSpec } from "./schema";
+import { chargeSpec, studentSpec } from "./schema";
 import { Finance } from "./Finance";
 import { Reports } from "./Reports";
 import { AccessList } from "./Management";
@@ -30,6 +30,15 @@ vi.mock("./api", async (original) => ({
   ...(await original<typeof import("./api")>()),
   downloadCsv: vi.fn().mockResolvedValue(undefined),
 }));
+
+it('mantém o recorte acadêmico na consulta e na exportação', async () => {
+  const fetcher = setupFetch();
+  show('/alunos?has_enrollments=false', <ResourceList spec={{ ...studentSpec, readOnly: true, fixedParams: { has_enrollments: 'true' } }} />);
+  await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url.includes('has_enrollments=true'))).toBe(true));
+  fireEvent.click(screen.getByRole('button', { name: 'Exportar CSV' }));
+  await waitFor(() => expect(downloadCsv).toHaveBeenCalled());
+  expect(vi.mocked(downloadCsv).mock.calls[0][1].get('has_enrollments')).toBe('true');
+});
 
 afterEach(() => {
   cleanup();

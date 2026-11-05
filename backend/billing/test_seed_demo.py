@@ -10,7 +10,7 @@ from academic.models import Lesson
 from academic.services import roster
 from billing.models import Charge, CommercialCondition, Enrollment, Payment
 from billing.services import evaluate_eligibility
-from core.models import AuditEvent, ClassGroup, Instructor, Lead, Modality, OperationLock, Student, User
+from core.models import AuditEvent, ClassGroup, Instructor, Lead, Modality, OperationLock, Person, User
 
 
 @override_settings(DEBUG=True, DEMO_MODE=True, ATTENDANCE_POLICY=None, BUSINESS_APPROVALS=[],
@@ -18,7 +18,7 @@ from core.models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Oper
 class SeedDemoTests(TestCase):
     today = date(2026, 11, 4)
     password = 'Synthetic-demo-2026!'
-    models = (User, Student, Modality, Instructor, ClassGroup, Lead, Enrollment,
+    models = (User, Person, Modality, Instructor, ClassGroup, Lead, Enrollment,
               CommercialCondition, Charge, Payment, Lesson, AuditEvent, OperationLock)
 
     def seed(self, **options):
@@ -34,8 +34,8 @@ class SeedDemoTests(TestCase):
             self.assertEqual(user.access_status, 'approved')
             self.assertTrue(user.check_password(self.password))
         self.assertFalse(User.objects.get(email='solicitante@example.test').has_usable_password())
-        self.assertEqual(Student.objects.count(), 14)
-        self.assertFalse(Student.objects.exclude(cpf='').exists())
+        self.assertEqual(Person.objects.count(), 14)
+        self.assertFalse(Person.objects.exclude(cpf='').exists())
         self.assertEqual(set(Lead.objects.values_list('status', flat=True)), set(Lead.Status.values))
         expected = {
             'Regular trimestral': 'regular', 'Aguardando ativação': 'pending',
@@ -60,7 +60,7 @@ class SeedDemoTests(TestCase):
 
     def test_rerun_preserves_manual_changes_and_passwords_even_on_another_day(self):
         self.seed()
-        student = Student.objects.first()
+        student = Person.objects.first()
         student.name = 'Nome editado manualmente'
         student.save()
         user = User.objects.get(email='secretaria@example.test')
@@ -127,4 +127,4 @@ class SeedDemoTests(TestCase):
     def test_january_reference_does_not_require_unavailable_previous_year_prices(self):
         self.seed(date=date(2026, 1, 1))
         self.assertEqual(Enrollment.objects.filter(contract_version=1).count(), 6)
-        self.assertTrue(Student.objects.filter(name='Aguardando vencimento • demonstração').exists())
+        self.assertTrue(Person.objects.filter(name='Aguardando vencimento • demonstração').exists())

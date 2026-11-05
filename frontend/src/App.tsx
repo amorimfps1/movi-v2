@@ -346,7 +346,7 @@ export function App() {
             </Route>)}
             <Route
               path="alunos"
-              element={<ResourceList key="students" spec={studentSpec} />}
+              element={<ResourceList key="students" spec={{ ...studentSpec, readOnly: true, description: 'Pessoas com matrícula acadêmica, incluindo o histórico de matrículas encerradas.', fixedParams: { has_enrollments: 'true' } }} beforeList={<Link className="back-link" to="/pessoas">Cadastrar ou consultar uma pessoa sem matrícula</Link>} />}
             />
             <Route path="alunos/:id" element={<StudentDetail />} />
             <Route

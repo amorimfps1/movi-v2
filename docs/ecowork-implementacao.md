@@ -1,5 +1,21 @@
 # EcoWork — andamento da implementação
 
+## Terceira entrega — cadastro central e consultas — 05/11/2026
+
+- `core.Person` substitui o modelo lógico `Student`, sem duplicar nem renomear a tabela física `core_student`. Migration `core.0004_person_identity` mantém referências, content type e concessões de permissões; codenames passam de `*_student` para `*_person`. APIs `students/`, campos acadêmicos `student` e auditoria `core.student`/`student.create`/`student.update` são contratos de compatibilidade ativos, não código morto. Imports/alias/serializer/viewset antigos foram removidos.
+- Pessoas filtra `has_enrollments` e `has_ecowork` sem duplicar resultados. Alunos usa `has_enrollments=true`, inclusive na exportação; cadastro de pessoas sem matrícula fica em Pessoas. O contador acadêmico conta pessoas não arquivadas com ao menos uma matrícula, inclusive histórica, sem duplicação.
+- Ficha de pessoa consulta `GET /api/ecowork/orders/summary/?person=<id>`: total, pagamentos confirmados do cliente, saldo e saldo vencido de todas as contratações. Agregação única com Decimal impede misturar estados financeiros de consultas sucessivas; compra no cartão continua sendo pagamento do cliente, não repasse da operadora.
+- Contratações aceitam `coverage`, `status`, `due_from` e `due_to`, além de pessoa/produto/mecanismo já existentes. Datas são inclusivas; intervalo invertido e opções inválidas retornam 400. Situação e datas precisam corresponder à mesma parcela. Contrato e suas demais parcelas continuam visíveis. Filtros/pessoa/página ficam na URL e são restaurados ao voltar; parâmetros desconhecidos não são encaminhados.
+- Removida a paginação duplicada de `core.views`, reutilizando `config.pagination`. OpenAPI atualizado.
+
+Verificação: testes específicos de migração com cadastro preexistente, lead convertido, contratação EcoWork, auditoria e concessão de permissão; regressão de identidade/concorrência; filtros combinados, saldo antigo junto de plano pago, acesso restrito, histórico de navegação e filtro acadêmico na exportação. Resultados finais registrados em `verification.md`.
+
+Chrome headless em prévia 5177/API 8004, com cópia de banco exclusivamente sintético: login, ficha de pessoa, saldo, navegação aos contratos filtrados, seleção de situação, recarga e lista acadêmica. Desktop 1440×1000 e celular 390×844; página e filtros com largura 390/390, sem pageerror. Evidências locais: `.local/person-desktop.png`, `.local/person-mobile.png`, `.local/person-filters-mobile.png`.
+
+Não houve migração do banco operacional. Aplicar migrations com os serviços parados antes de usar a nova versão nesse banco; a migration depende da fundação EcoWork já existente. Não executar código antigo simultaneamente à migração de permissões. Dados sintéticos antigos foram migrados em cópia separada para a inspeção.
+
+Pendentes: correções/estornos/cancelamentos, renovação dedicada e regra de sobreposição, catálogo versionado, relatórios consolidados, importação e frequência opcional. Esta entrega substitui a pendência histórica de alias `Person = Student` e as consultas iniciais abaixo.
+
 ## Segunda entrega — contratos, parcelas e interface — 04/11/2026
 
 Implementados contratos e vendas avulsas em `ecowork.Order`, cobranças em `ecowork.Charge` e recebimentos em `ecowork.Payment`, separados do financeiro acadêmico. `Order` concentra a condição comercial de uma operação; `months > 0` identifica plano, enquanto avulsos não possuem cobertura mensal.

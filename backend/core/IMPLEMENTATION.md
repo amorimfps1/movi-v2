@@ -1,5 +1,7 @@
 # Núcleo administrativo
 
+Atualização 05/11/2026: o modelo central é `Person`, na mesma tabela física `core_student`. `PersonSerializer`/`PersonViewSet` atendem `people/` e a rota acadêmica compatível `students/`; filtro `has_enrollments` separa pessoas com matrícula. Alias/imports `Student` removidos. Auditoria mantém os identificadores históricos e a migração preserva permissões. Detalhes atuais em `docs/ecowork-implementacao.md`; referências abaixo a Student descrevem o histórico técnico anterior.
+
 Implementação de `core`, conforme `docs/CONTRACT.md` e documento integral de requisitos. Não representa homologação institucional.
 
 ## Arquivos

@@ -688,6 +688,755 @@ paths:
               schema:
                 $ref: '#/components/schemas/ClassGroup'
           description: ''
+  /api/condominium-associations/:
+    get:
+      operationId: condominium_associations_list
+      parameters:
+      - in: query
+        name: condominium
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - condominium-associations
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAssociationList'
+          description: ''
+    post:
+      operationId: condominium_associations_create
+      tags:
+      - condominium-associations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Association'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Association'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Association'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Association'
+          description: ''
+  /api/condominium-associations/{id}/:
+    get:
+      operationId: condominium_associations_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este condominium association.
+        required: true
+      tags:
+      - condominium-associations
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Association'
+          description: ''
+  /api/condominium-associations/{id}/end/:
+    post:
+      operationId: condominium_associations_end_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este condominium association.
+        required: true
+      tags:
+      - condominium-associations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EndAssociation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EndAssociation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EndAssociation'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Association'
+          description: ''
+  /api/condominiums/:
+    get:
+      operationId: condominiums_list
+      parameters:
+      - in: query
+        name: active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - condominiums
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCondominiumList'
+          description: ''
+    post:
+      operationId: condominiums_create
+      tags:
+      - condominiums
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Condominium'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Condominium'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Condominium'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condominium'
+          description: ''
+  /api/condominiums/{id}/:
+    get:
+      operationId: condominiums_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este condominium.
+        required: true
+      tags:
+      - condominiums
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condominium'
+          description: ''
+    put:
+      operationId: condominiums_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este condominium.
+        required: true
+      tags:
+      - condominiums
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Condominium'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Condominium'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Condominium'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condominium'
+          description: ''
+    patch:
+      operationId: condominiums_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este condominium.
+        required: true
+      tags:
+      - condominiums
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCondominium'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCondominium'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCondominium'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condominium'
+          description: ''
+  /api/ecowork/charges/:
+    get:
+      operationId: ecowork_charges_list
+      parameters:
+      - in: query
+        name: order
+        schema:
+          type: integer
+      - in: query
+        name: order__person
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEcoWorkChargeList'
+          description: ''
+  /api/ecowork/charges/{id}/:
+    get:
+      operationId: ecowork_charges_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este charge.
+        required: true
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkCharge'
+          description: ''
+  /api/ecowork/charges/{id}/receive/:
+    post:
+      operationId: ecowork_charges_receive_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este charge.
+        required: true
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Receive'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Receive'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Receive'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkPayment'
+          description: ''
+  /api/ecowork/orders/:
+    get:
+      operationId: ecowork_orders_list
+      parameters:
+      - in: query
+        name: billing_mode
+        schema:
+          type: string
+          enum:
+          - card
+          - cash
+          - office
+        description: |-
+          * `cash` - À vista
+          * `office` - Parcelas pela secretaria
+          * `card` - Cartão parcelado
+      - in: query
+        name: coverage
+        schema:
+          type: string
+          enum:
+          - active
+          - awaiting_payment
+          - cancelled
+          - expired
+          - paid_use
+        description: |-
+          * `awaiting_payment` - awaiting_payment
+          * `active` - active
+          * `expired` - expired
+          * `paid_use` - paid_use
+          * `cancelled` - cancelled
+      - in: query
+        name: due_from
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: due_to
+        schema:
+          type: string
+          format: date
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: person
+        schema:
+          type: integer
+      - in: query
+        name: product
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - open
+          - overdue
+          - paid
+        description: |-
+          * `paid` - paid
+          * `open` - open
+          * `overdue` - overdue
+          * `cancelled` - cancelled
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrderList'
+          description: ''
+    post:
+      operationId: ecowork_orders_create
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+  /api/ecowork/orders/{id}/:
+    get:
+      operationId: ecowork_orders_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este order.
+        required: true
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+  /api/ecowork/orders/{id}/cancel/:
+    post:
+      operationId: ecowork_orders_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este order.
+        required: true
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CancelOrder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancelOrder'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+  /api/ecowork/orders/summary/:
+    get:
+      operationId: ecowork_orders_summary_retrieve
+      parameters:
+      - in: query
+        name: person
+        schema:
+          type: integer
+        required: true
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonSummary'
+          description: ''
+  /api/ecowork/payments/:
+    get:
+      operationId: ecowork_payments_list
+      parameters:
+      - in: query
+        name: charge
+        schema:
+          type: integer
+      - in: query
+        name: charge__order
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEcoWorkPaymentList'
+          description: ''
+  /api/ecowork/payments/{id}/:
+    get:
+      operationId: ecowork_payments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment.
+        required: true
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkPayment'
+          description: ''
+  /api/ecowork/payments/{id}/refund/:
+    post:
+      operationId: ecowork_payments_refund_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment.
+        required: true
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund'
+          description: ''
+  /api/ecowork/payments/{id}/void/:
+    post:
+      operationId: ecowork_payments_void_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment.
+        required: true
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinancialReason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FinancialReason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FinancialReason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkPayment'
+          description: ''
+  /api/ecowork/products/:
+    get:
+      operationId: ecowork_products_list
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+          description: ''
+  /api/ecowork/quote/:
+    post:
+      operationId: ecowork_quote_create
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+          description: ''
   /api/enrollments/:
     get:
       operationId: enrollments_list
@@ -1992,6 +2741,166 @@ paths:
               schema:
                 $ref: '#/components/schemas/Payment'
           description: ''
+  /api/people/:
+    get:
+      operationId: people_list
+      parameters:
+      - in: query
+        name: archived
+        schema:
+          type: boolean
+      - in: query
+        name: has_ecowork
+        schema:
+          type: boolean
+      - in: query
+        name: has_enrollments
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - people
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPersonList'
+          description: ''
+    post:
+      operationId: people_create
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Person'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Person'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Person'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
+  /api/people/{id}/:
+    get:
+      operationId: people_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este person.
+        required: true
+      tags:
+      - people
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
+    put:
+      operationId: people_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este person.
+        required: true
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Person'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Person'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Person'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
+    patch:
+      operationId: people_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este person.
+        required: true
+      tags:
+      - people
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPerson'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPerson'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPerson'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
   /api/policies/:
     get:
       operationId: policies_retrieve
@@ -2069,12 +2978,146 @@ paths:
               schema:
                 $ref: '#/components/schemas/Summary'
           description: ''
+  /api/residence-verifications/:
+    get:
+      operationId: residence_verifications_list
+      parameters:
+      - in: query
+        name: condominium
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: person
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - residence-verifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResidenceList'
+          description: ''
+    post:
+      operationId: residence_verifications_create
+      tags:
+      - residence-verifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Residence'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Residence'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Residence'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Residence'
+          description: ''
+  /api/residence-verifications/{id}/:
+    get:
+      operationId: residence_verifications_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este residence verification.
+        required: true
+      tags:
+      - residence-verifications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Residence'
+          description: ''
+  /api/residence-verifications/{id}/revoke/:
+    post:
+      operationId: residence_verifications_revoke_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este residence verification.
+        required: true
+      tags:
+      - residence-verifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Residence'
+          description: ''
   /api/students/:
     get:
       operationId: students_list
       parameters:
       - in: query
         name: archived
+        schema:
+          type: boolean
+      - in: query
+        name: has_ecowork
+        schema:
+          type: boolean
+      - in: query
+        name: has_enrollments
         schema:
           type: boolean
       - name: ordering
@@ -2110,7 +3153,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedStudentList'
+                $ref: '#/components/schemas/PaginatedPersonList'
           description: ''
     post:
       operationId: students_create
@@ -2120,13 +3163,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Student'
+              $ref: '#/components/schemas/Person'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Student'
+              $ref: '#/components/schemas/Person'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Student'
+              $ref: '#/components/schemas/Person'
         required: true
       security:
       - cookieAuth: []
@@ -2135,7 +3178,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Student'
+                $ref: '#/components/schemas/Person'
           description: ''
   /api/students/{id}/:
     get:
@@ -2145,7 +3188,7 @@ paths:
         name: id
         schema:
           type: integer
-        description: Um valor inteiro único que identifica este student.
+        description: Um valor inteiro único que identifica este person.
         required: true
       tags:
       - students
@@ -2156,7 +3199,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Student'
+                $ref: '#/components/schemas/Person'
           description: ''
     put:
       operationId: students_update
@@ -2165,7 +3208,7 @@ paths:
         name: id
         schema:
           type: integer
-        description: Um valor inteiro único que identifica este student.
+        description: Um valor inteiro único que identifica este person.
         required: true
       tags:
       - students
@@ -2173,13 +3216,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Student'
+              $ref: '#/components/schemas/Person'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Student'
+              $ref: '#/components/schemas/Person'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Student'
+              $ref: '#/components/schemas/Person'
         required: true
       security:
       - cookieAuth: []
@@ -2188,7 +3231,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Student'
+                $ref: '#/components/schemas/Person'
           description: ''
     patch:
       operationId: students_partial_update
@@ -2197,7 +3240,7 @@ paths:
         name: id
         schema:
           type: integer
-        description: Um valor inteiro único que identifica este student.
+        description: Um valor inteiro único que identifica este person.
         required: true
       tags:
       - students
@@ -2205,13 +3248,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedStudent'
+              $ref: '#/components/schemas/PatchedPerson'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedStudent'
+              $ref: '#/components/schemas/PatchedPerson'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedStudent'
+              $ref: '#/components/schemas/PatchedPerson'
       security:
       - cookieAuth: []
       responses:
@@ -2219,7 +3262,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Student'
+                $ref: '#/components/schemas/Person'
           description: ''
   /api/users/:
     get:
@@ -2467,6 +3510,38 @@ components:
       description: |-
         * `regular` - Regular
         * `cancelled` - Cancelada
+    Association:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        condominium:
+          type: integer
+        condominium_name:
+          type: string
+          readOnly: true
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+          nullable: true
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor
+      - condominium
+      - condominium_name
+      - created_at
+      - id
+      - starts_on
     AttendanceCorrection:
       type: object
       properties:
@@ -2591,6 +3666,17 @@ components:
           maxLength: 2000
       required:
       - reason
+    CancelOrder:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+      required:
+      - mode
+      - reason
     CategoryEnum:
       enum:
       - tuition
@@ -2688,8 +3774,9 @@ components:
           maxLength: 120
         capacity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 1
+          format: int64
         active:
           type: boolean
         allows_trial:
@@ -2739,6 +3826,25 @@ components:
       - enrollment
       - id
       - plan
+    Condominium:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
     Convert:
       type: object
       properties:
@@ -2779,6 +3885,116 @@ components:
       required:
       - decisions
       - detail
+    EcoWorkCharge:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        order:
+          type: integer
+          readOnly: true
+        number:
+          type: integer
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        due_date:
+          type: string
+          format: date
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        payment:
+          allOf:
+          - $ref: '#/components/schemas/EcoWorkPayment'
+          readOnly: true
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/EcoWorkPayment'
+          readOnly: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - amount
+      - cancelled_at
+      - due_date
+      - id
+      - number
+      - order
+      - payment
+      - payments
+      - status
+    EcoWorkPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        charge:
+          type: integer
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        paid_on:
+          type: string
+          format: date
+          readOnly: true
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          readOnly: true
+        reference:
+          type: string
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        voided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        voided_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        void_reason:
+          type: string
+          readOnly: true
+        refunds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Refund'
+          readOnly: true
+      required:
+      - actor
+      - amount
+      - charge
+      - created_at
+      - id
+      - method
+      - paid_on
+      - reference
+      - refunds
+      - void_reason
+      - voided_at
+      - voided_by
     Eligibility:
       type: object
       properties:
@@ -2798,6 +4014,18 @@ components:
       - eligible
       - reason
       - status
+    EndAssociation:
+      type: object
+      properties:
+        ends_on:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - ends_on
+      - reason
     Enrollment:
       type: object
       properties:
@@ -2851,8 +4079,9 @@ components:
           $ref: '#/components/schemas/PaymentMethodEnum'
         installments:
           type: integer
-          maximum: 32767
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         fee_amount:
           type: string
           format: decimal
@@ -2888,6 +4117,14 @@ components:
       description: |-
         * `standard` - Convencional
         * `rhythmic` - Ginástica Rítmica
+    FinancialReason:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - reason
     Instructor:
       type: object
       properties:
@@ -3152,7 +4389,7 @@ components:
         price_category:
           nullable: true
           minimum: 0
-          maximum: 32767
+          maximum: 9223372036854775807
           oneOf:
           - $ref: '#/components/schemas/PriceCategoryEnum'
           - $ref: '#/components/schemas/NullEnum'
@@ -3164,9 +4401,218 @@ components:
       - default_price
       - id
       - name
+    ModeEnum:
+      enum:
+      - keep_unpaid
+      - cancel_unpaid
+      type: string
+      description: |-
+        * `keep_unpaid` - keep_unpaid
+        * `cancel_unpaid` - cancel_unpaid
     NullEnum:
       enum:
       - null
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        person:
+          type: integer
+          readOnly: true
+        person_name:
+          type: string
+          readOnly: true
+        product:
+          type: string
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        months:
+          type: integer
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        discount_percent:
+          type: integer
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        residence:
+          type: integer
+          readOnly: true
+          nullable: true
+        association:
+          type: integer
+          readOnly: true
+          nullable: true
+        billing_mode:
+          allOf:
+          - $ref: '#/components/schemas/OrderBillingModeEnum'
+          readOnly: true
+        installments:
+          type: integer
+          readOnly: true
+        first_due:
+          type: string
+          format: date
+          readOnly: true
+        starts_on:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        ends_on:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        coverage_status:
+          type: string
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/EcoWorkCharge'
+          readOnly: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancelled_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        cancellation_reason:
+          type: string
+          readOnly: true
+        cancellation_mode:
+          type: string
+          readOnly: true
+      required:
+      - actor
+      - association
+      - base_price
+      - billing_mode
+      - cancellation_mode
+      - cancellation_reason
+      - cancelled_at
+      - cancelled_by
+      - charges
+      - coverage_status
+      - created_at
+      - discount_percent
+      - ends_on
+      - first_due
+      - id
+      - installments
+      - months
+      - person
+      - person_name
+      - product
+      - product_name
+      - quantity
+      - residence
+      - starts_on
+      - total
+    OrderBillingModeEnum:
+      enum:
+      - cash
+      - office
+      - card
+      type: string
+      description: |-
+        * `cash` - À vista
+        * `office` - Parcelas pela secretaria
+        * `card` - Cartão parcelado
+    OrderRequest:
+      type: object
+      properties:
+        person:
+          type: integer
+        product:
+          $ref: '#/components/schemas/ProductEnum'
+        quantity:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 1
+        billing_mode:
+          $ref: '#/components/schemas/OrderRequestBillingModeEnum'
+        installments:
+          type: integer
+          maximum: 12
+          minimum: 1
+          default: 1
+        first_due:
+          type: string
+          format: date
+        expected_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        request_key:
+          type: string
+          format: uuid
+      required:
+      - billing_mode
+      - expected_total
+      - first_due
+      - person
+      - product
+      - request_key
+    OrderRequestBillingModeEnum:
+      enum:
+      - cash
+      - office
+      - card
+      type: string
+      description: |-
+        * `cash` - cash
+        * `office` - office
+        * `card` - card
+    PaginatedAssociationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Association'
     PaginatedAuditList:
       type: object
       required:
@@ -3259,6 +4705,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Condition'
+    PaginatedCondominiumList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condominium'
+    PaginatedEcoWorkChargeList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EcoWorkCharge'
+    PaginatedEcoWorkPaymentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EcoWorkPayment'
     PaginatedEnrollmentList:
       type: object
       required:
@@ -3397,6 +4912,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Modality'
+    PaginatedOrderList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
     PaginatedPaymentList:
       type: object
       required:
@@ -3420,7 +4958,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Payment'
-    PaginatedStudentList:
+    PaginatedPersonList:
       type: object
       required:
       - count
@@ -3442,7 +4980,30 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/Student'
+            $ref: '#/components/schemas/Person'
+    PaginatedResidenceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Residence'
     PaginatedUserList:
       type: object
       required:
@@ -3500,12 +5061,28 @@ components:
           maxLength: 120
         capacity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 1
+          format: int64
         active:
           type: boolean
         allows_trial:
           type: boolean
+    PatchedCondominium:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedEnrollment:
       type: object
       properties:
@@ -3559,8 +5136,9 @@ components:
           $ref: '#/components/schemas/PaymentMethodEnum'
         installments:
           type: integer
-          maximum: 32767
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         fee_amount:
           type: string
           format: decimal
@@ -3688,7 +5266,7 @@ components:
         price_category:
           nullable: true
           minimum: 0
-          maximum: 32767
+          maximum: 9223372036854775807
           oneOf:
           - $ref: '#/components/schemas/PriceCategoryEnum'
           - $ref: '#/components/schemas/NullEnum'
@@ -3696,7 +5274,7 @@ components:
           oneOf:
           - $ref: '#/components/schemas/EnrollmentFeeKindEnum'
           - $ref: '#/components/schemas/BlankEnum'
-    PatchedStudent:
+    PatchedPerson:
       type: object
       properties:
         id:
@@ -3792,6 +5370,80 @@ components:
       - id
       - impact
       - title
+    Person:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        cpf:
+          type: string
+          maxLength: 18
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 30
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        address:
+          type: string
+        notes:
+          type: string
+        archived:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+    PersonSummary:
+      type: object
+      properties:
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        overdue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        orders:
+          type: integer
+        refunded:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        net_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+      required:
+      - balance
+      - net_paid
+      - orders
+      - overdue
+      - paid
+      - refunded
+      - total
     PlanEnum:
       enum:
       - monthly
@@ -3840,6 +5492,95 @@ components:
         * `5` - Atividade 5
         * `6` - Atividade 6
         * `7` - Atividade 7
+    Product:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        hours:
+          type: integer
+          nullable: true
+        months:
+          type: integer
+        max_installments:
+          type: integer
+      required:
+      - code
+      - hours
+      - max_installments
+      - months
+      - name
+      - price
+    ProductEnum:
+      enum:
+      - hour
+      - half_day
+      - day
+      - monthly
+      - semiannual
+      - annual
+      type: string
+      description: |-
+        * `hour` - hour
+        * `half_day` - half_day
+        * `day` - day
+        * `monthly` - monthly
+        * `semiannual` - semiannual
+        * `annual` - annual
+    Quote:
+      type: object
+      properties:
+        person:
+          type: integer
+        product:
+          type: string
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        discount_percent:
+          type: integer
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        residence_verification:
+          type: integer
+          nullable: true
+        association:
+          type: integer
+          nullable: true
+        reason:
+          type: string
+        quoted_on:
+          type: string
+          format: date
+      required:
+      - association
+      - base_price
+      - discount_percent
+      - person
+      - product
+      - quoted_on
+      - reason
+      - residence_verification
+      - total
+    QuoteRequest:
+      type: object
+      properties:
+        person:
+          type: integer
+        product:
+          $ref: '#/components/schemas/ProductEnum'
+      required:
+      - person
+      - product
     Reason:
       type: object
       properties:
@@ -3867,6 +5608,103 @@ components:
       - amount
       - method
       - paid_on
+    Receive:
+      type: object
+      properties:
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        paid_on:
+          type: string
+          format: date
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        reference:
+          type: string
+          default: ''
+          maxLength: 160
+        request_key:
+          type: string
+          format: uuid
+      required:
+      - amount
+      - method
+      - paid_on
+      - request_key
+    Refund:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        payment:
+          type: integer
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        refunded_on:
+          type: string
+          format: date
+          readOnly: true
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          readOnly: true
+        reference:
+          type: string
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor
+      - amount
+      - created_at
+      - id
+      - method
+      - payment
+      - reason
+      - reference
+      - refunded_on
+    RefundRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        refunded_on:
+          type: string
+          format: date
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        reference:
+          type: string
+          default: ''
+          maxLength: 160
+        request_key:
+          type: string
+          format: uuid
+      required:
+      - amount
+      - method
+      - reason
+      - refunded_on
+      - request_key
     Register:
       type: object
       properties:
@@ -3887,6 +5725,58 @@ components:
       - email
       - first_name
       - password
+    Residence:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        person:
+          type: integer
+        person_name:
+          type: string
+          readOnly: true
+        condominium:
+          type: integer
+        condominium_name:
+          type: string
+          readOnly: true
+        declared:
+          type: boolean
+        proof_checked:
+          type: boolean
+        verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        revoked_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        revocation_reason:
+          type: string
+          readOnly: true
+      required:
+      - actor
+      - condominium
+      - condominium_name
+      - declared
+      - id
+      - person
+      - person_name
+      - proof_checked
+      - revocation_reason
+      - revoked_at
+      - revoked_by
+      - verified_at
     Roster:
       type: object
       properties:
@@ -3940,43 +5830,6 @@ components:
       required:
       - enrollment
       - student_name
-    Student:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        name:
-          type: string
-          maxLength: 200
-        cpf:
-          type: string
-          maxLength: 18
-        email:
-          type: string
-          format: email
-          maxLength: 254
-        phone:
-          type: string
-          maxLength: 30
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-        address:
-          type: string
-        notes:
-          type: string
-        archived:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-      required:
-      - created_at
-      - id
-      - name
     Summary:
       type: object
       properties:

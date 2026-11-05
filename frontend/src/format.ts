@@ -66,6 +66,11 @@ export const label = (value: unknown) =>
 
 // Codes emitted by core.audit.record; transport and filtering keep these keys.
 export const auditActions: Record<string, string> = {
+  "ecowork.order.cancel": "Contratação EcoWork cancelada",
+  "ecowork.payment.void": "Lançamento EcoWork invalidado",
+  "ecowork.payment.refund": "Devolução EcoWork registrada",
+  "ecowork.order.create": "Contratação EcoWork registrada",
+  "ecowork.payment.create": "Recebimento EcoWork registrado",
   "access.request": "Solicitação de acesso",
   "access.approve": "Acesso aprovado",
   "access.reject": "Acesso rejeitado",
@@ -97,6 +102,9 @@ export const auditActions: Record<string, string> = {
   "lesson.updated": "Aula atualizada",
 };
 export const auditTargets: Record<string, string> = {
+  "ecowork.order": "Contratação EcoWork",
+  "ecowork.payment": "Recebimento EcoWork",
+  "ecowork.refund": "Devolução EcoWork",
   "core.user": "Conta de acesso",
   "core.student": "Aluno",
   "core.lead": "Lead",

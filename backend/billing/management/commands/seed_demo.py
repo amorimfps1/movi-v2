@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
-from core.models import User, Student, Modality, Instructor, ClassGroup, Lead, OperationLock
+from core.models import User, Person, Modality, Instructor, ClassGroup, Lead, OperationLock
 from core.audit import record
 from billing.models import Enrollment, CommercialCondition, Charge, Payment
 from billing.contracts import terms, generate
@@ -30,7 +30,7 @@ class Command(BaseCommand):
         OperationLock.objects.select_for_update().get(pk=lock.pk)
         marker = OperationLock.objects.filter(key='demo-seeded').exists()
         if not marker and any(model.objects.exists() for model in (
-            Student, User, Modality, Instructor, ClassGroup, Lead, Enrollment, Lesson,
+            Person, User, Modality, Instructor, ClassGroup, Lead, Enrollment, Lesson,
         )):
             raise CommandError('O banco já contém cadastros. Use um banco vazio exclusivo para demonstração.')
         reference = OperationLock.objects.filter(key__startswith='demo-reference-date:').first()
@@ -93,7 +93,7 @@ class Command(BaseCommand):
             groups.append(group)
             Lesson.objects.get_or_create(class_group=group,date=today)
         for index in range(8):
-            student,_ = Student.objects.get_or_create(name=f'Participante {index+1:02} • demonstração',
+            student,_ = Person.objects.get_or_create(name=f'Participante {index+1:02} • demonstração',
                 defaults={'email':f'participante{index+1}@example.test','notes':'Registro sintético para desenvolvimento; sem dados pessoais reais.'})
             group = groups[index%len(groups)]
             enrollment,created = Enrollment.objects.get_or_create(student=student,class_group=group,
@@ -146,7 +146,7 @@ class Command(BaseCommand):
         ]
         students = []
         for index, (label, plan, installments, associated, state, start) in enumerate(scenarios):
-            student = Student.objects.create(
+            student = Person.objects.create(
                 name=f'{label} • demonstração', email=f'contrato{index+1}@example.test',
                 notes='Registro sintético para testes; sem dados pessoais reais.',
             )
