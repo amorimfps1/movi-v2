@@ -32,18 +32,21 @@ export function ReceiveForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [requestKey] = useState(() => crypto.randomUUID());
+  const balance = Math.max(0, Math.round(Number(charge.amount) * 100) - Math.round(Number(charge.received || 0) * 100)) / 100;
   return (
     <ActionForm
       title="Confirmar recebimento"
       endpoint={`charges/${charge.id}/receive/`}
-      description={`Confira o recebimento de ${String(charge.student_name)}. Devido: ${money(charge.amount)}. Enquanto DN-008 estiver pendente, a baixa exige valor exato. O registro preserva a situação administrativa da matrícula.`}
+      description={`Confira o recebimento de ${String(charge.student_name)}. Saldo: ${money(balance)}. Valores parciais são aceitos; o excedente é recusado.`}
+      transform={(values) => ({ ...values, request_key: requestKey })}
       fields={[
         {
           key: "amount",
           label: "Valor efetivamente recebido (R$)",
           type: "decimal",
           required: true,
-          default: String(charge.amount),
+          default: balance.toFixed(2),
         },
         {
           key: "paid_on",
@@ -320,8 +323,7 @@ export function ChargeDetail() {
             )}
           </section>
           <p className="period-note">
-            Correções, estornos e pagamentos parciais ou excedentes aguardam
-            política aprovada. DN-008 e RN-048. O histórico é preservado.
+            Pagamentos parciais compõem o saldo. Correções e estornos ainda não estão disponíveis; excedentes são recusados.
           </p>
         </div>
       </div>

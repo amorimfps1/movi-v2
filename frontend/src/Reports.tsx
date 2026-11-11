@@ -4,6 +4,7 @@ import { Download, ArrowUpRight, FileSpreadsheet } from "lucide-react";
 import { useApi } from "./query";
 import { useAuth, isAdmin } from "./auth";
 import { downloadCsv } from "./api";
+import { ActionForm } from "./forms";
 import type { Summary, Policies } from "./types";
 import {
   PageTitle,
@@ -77,6 +78,10 @@ export function Reports() {
         <Button type="submit">Consultar período</Button>
         <span>Datas locais de São Paulo</span>
       </form>
+      <ConversionReport start={period.start} end={period.end} />
+      {admin && <AttritionReport start={period.start} end={period.end} />}
+      {admin && <OccupancyReport />}
+      {admin && <FrequencyReport />}
       {query.isPending ? (
         <Loading />
       ) : query.error ? (
@@ -292,6 +297,61 @@ export function Reports() {
     </>
   );
 }
+
+function AttritionReport({ start, end }: { start: string; end: string }) {
+  const query = useApi<{ start: string; end: string; active_at_start: number; early_cancellations: number; normal_completions: number; unknown_end: number; unknown_cancellation: number; percent: string | null; definition: string }>(`reports/attrition/?${new URLSearchParams({ start, end })}`);
+  return <section className="sheet section-pad"><h2>Evasão</h2>
+    {query.isPending ? <Loading /> : query.error ? <ErrorNotice error={query.error} /> : typeof query.data?.active_at_start !== 'number' ? <Notice tone="error">Não foi possível interpretar a evasão recebida.</Notice> : query.data && <>
+      <p>De {date(query.data.start)} a {date(query.data.end)}. {query.data.definition}</p>
+      <p>Ativas no início: {query.data.active_at_start} · Cancelamentos antecipados: {query.data.early_cancellations} · Evasão: {query.data.percent === null ? 'Sem base definida' : `${Number(query.data.percent).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}</p>
+      <p>Conclusões normais: {query.data.normal_completions} · Sem fim conhecido: {query.data.unknown_end} · Sem data conhecida de cancelamento: {query.data.unknown_cancellation}</p>
+    </>}
+  </section>;
+}
+function ConversionReport({ start, end }: { start: string; end: string }) {
+  const query = useApi<{ start: string; end: string; leads: number; converted_people: number; converted_enrollments: number; person_percent: string | null; enrollment_percent: string | null; definition: string }>(`reports/conversion/?${new URLSearchParams({ start, end })}`);
+  const percent = (value: string | null) => value === null ? 'Sem leads na coorte' : `${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  return <section className="sheet section-pad"><h2>Conversão da coorte de leads</h2>
+    {query.isPending ? <Loading /> : query.error ? <ErrorNotice error={query.error} /> : typeof query.data?.leads !== 'number' ? <Notice tone="error">Não foi possível interpretar a conversão recebida.</Notice> : query.data && <>
+      <p>Leads cadastrados de {date(query.data.start)} a {date(query.data.end)}: {query.data.leads}. {query.data.definition}</p>
+      <p>Pessoas vinculadas: {query.data.converted_people} · {percent(query.data.person_percent)}</p>
+      <p>Leads com matrícula atribuída: {query.data.converted_enrollments} · {percent(query.data.enrollment_percent)}</p>
+    </>}
+  </section>;
+}
+function FrequencyReport() {
+  type Window = { present: number; absent: number; percent: string | null };
+  const { user } = useAuth();
+  const [configuring, setConfiguring] = useState(false);
+  const query = useApi<{ on: string; definition: string; short_days: number; long_days: number; absence_threshold: number; enrollments: { enrollment: number; person: string; class_name: string; short_window: Window; long_window: Window; consecutive_absences: number; alert: boolean }[] }>('reports/frequency/');
+  const percent = (value: string | null) => value === null ? 'Sem registros' : `${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  return <section className="sheet section-pad"><div className="section-heading"><h2>Frequência e faltas</h2>{user?.roles.includes('coordinator') && query.data && <Button variant="secondary" onClick={() => setConfiguring(true)}>Configurar indicador</Button>}</div>
+    {query.isPending ? <Loading /> : query.error ? <ErrorNotice error={query.error} /> : !Array.isArray(query.data?.enrollments) ? <Notice tone="error">Não foi possível interpretar a frequência recebida.</Notice> : query.data && <>
+      <p>Posição em {date(query.data.on)}. {query.data.definition} Alerta a partir de {query.data.absence_threshold} faltas consecutivas.</p>
+      {!query.data.enrollments.length ? <p>Nenhuma matrícula regular vigente.</p> : <div className="table-wrap"><table><thead><tr><th>Aluno</th><th>Turma</th><th>{query.data.short_days} dias</th><th>{query.data.long_days} dias</th><th>Faltas consecutivas</th></tr></thead><tbody>
+        {query.data.enrollments.map((row) => <tr key={row.enrollment}><td><Link to={`/matriculas/${row.enrollment}`}>{row.person}</Link></td><td>{row.class_name}</td><td>{percent(row.short_window.percent)}</td><td>{percent(row.long_window.percent)}</td><td>{row.consecutive_absences}{row.alert ? ' · Atenção' : ''}</td></tr>)}
+      </tbody></table></div>}
+    </>}
+    {configuring && query.data && <ActionForm title="Configurar frequência" endpoint="reports/frequency-policy/" fields={[
+      { key: 'short_days', label: 'Janela menor em dias', type: 'number', min: 1, max: 3650, required: true, default: query.data.short_days },
+      { key: 'long_days', label: 'Janela maior em dias', type: 'number', min: 1, max: 3650, required: true, default: query.data.long_days },
+      { key: 'absence_threshold', label: 'Faltas consecutivas para alerta', type: 'number', min: 1, max: 100, required: true, default: query.data.absence_threshold },
+      { key: 'reason', label: 'Motivo da alteração', type: 'textarea', required: true, wide: true },
+    ]} transform={(values) => ({ ...values, short_days: Number(values.short_days), long_days: Number(values.long_days), absence_threshold: Number(values.absence_threshold) })} onClose={() => setConfiguring(false)} />}
+  </section>;
+}
+function OccupancyReport() {
+  const query = useApi<{ on: string; definition: string; classes: { class_group: number; name: string; capacity: number; regular: number; experimental: number; waiting: number; percent: string }[] }>('reports/occupancy/');
+  return <section className="sheet section-pad">
+    <h2>Ocupação das turmas</h2>
+    {query.isPending ? <Loading /> : query.error ? <ErrorNotice error={query.error} /> : !Array.isArray(query.data?.classes) ? <Notice tone="error">Não foi possível interpretar a ocupação recebida.</Notice> : query.data && <>
+      <p>Posição em {date(query.data.on)}. {query.data.definition}</p>
+      {!query.data.classes.length ? <p>Nenhuma turma ativa.</p> : <div className="table-wrap"><table><thead><tr><th>Turma</th><th>Matrículas</th><th>Capacidade</th><th>Ocupação</th><th>Experimentais</th><th>Espera</th></tr></thead><tbody>
+        {query.data.classes.map((group) => <tr key={group.class_group}><td><Link to={`/turmas/${group.class_group}`}>{group.name}</Link></td><td>{group.regular}</td><td>{group.capacity}</td><td>{Number(group.percent).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</td><td>{group.experimental}</td><td>{group.waiting}</td></tr>)}
+      </tbody></table></div>}
+    </>}
+  </section>;
+}
 export function PoliciesPage() {
   const query = useApi<Policies>("policies/");
   const [search, setSearch] = useState("");
@@ -309,12 +369,10 @@ export function PoliciesPage() {
       <PageTitle
         eyebrow="REGRAS INSTITUCIONAIS"
         title="Decisões que orientam o MOVI+"
-        description="As rotinas seguem as regras disponíveis. Uma decisão pendente não autoriza o sistema a inventar uma política."
+        description="Acompanhe as regras aprovadas e o andamento de sua implementação."
       />
       <Notice tone="warning">
-        Este registro indica pendências de negócio. A aprovação institucional
-        precisa identificar a política detalhada, o responsável e a data antes
-        de habilitar rotinas condicionadas.
+        As propostas DN-001 a DN-022 foram aprovadas. Algumas funcionalidades ainda precisam ser implementadas ou homologadas.
       </Notice>
       <section className="sheet">
         <div className="policy-toolbar">
@@ -339,11 +397,7 @@ export function PoliciesPage() {
           <div className="policy-list">
             {filtered.map((policy) => (
               <article key={policy.id}>
-                <Badge
-                  value={
-                    data.approved.includes(policy.id) ? "approved" : "pending"
-                  }
-                >
+                <Badge value="neutral">
                   {policy.id}
                 </Badge>
                 <div>
@@ -351,9 +405,7 @@ export function PoliciesPage() {
                   <p>{policy.impact}</p>
                 </div>
                 <span className="policy-status">
-                  {data.approved.includes(policy.id)
-                    ? "Aprovação registrada"
-                    : "Pendente"}
+                  Em acompanhamento
                 </span>
               </article>
             ))}
@@ -361,8 +413,7 @@ export function PoliciesPage() {
         )}
       </section>
       <p className="period-note">
-        Fuso operacional: {data.timezone}. Aprovações registradas:{" "}
-        {data.approved.length ? data.approved.join(", ") : "nenhuma"}.{" "}
+        Fuso operacional: {data.timezone}.{" "}
         {data.demo ? "Ambiente de demonstração isolado." : ""}
       </p>
     </>

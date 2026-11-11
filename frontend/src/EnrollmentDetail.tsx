@@ -18,11 +18,13 @@ import {
 import { ActionForm, RecordForm } from "./forms";
 import { enrollmentFields } from "./schema";
 import { date, label, money, today } from "./format";
+import { useAuth } from "./auth";
 export function EnrollmentDetail() {
   const { id } = useParams();
   return <EnrollmentRecord key={id} id={id!} />;
 }
 function EnrollmentRecord({ id }: { id: string }) {
+  const { user } = useAuth();
   const [chargePage, setChargePage] = useState(1);
   const enrollment = useApi<Enrollment>(`enrollments/${id}/`);
   const eligibility = useApi<Eligibility>(
@@ -31,6 +33,8 @@ function EnrollmentRecord({ id }: { id: string }) {
   const charges = useApi<Page<RecordData>>(
     `charges/?enrollment=${id}&page=${chargePage}&page_size=25`,
   );
+  const suspensions = useApi<RecordData[]>(`enrollments/${id}/suspensions/`);
+  const [suspending, setSuspending] = useState(false);
   const [cancel, setCancel] = useState(false);
   const [notice, setNotice] = useState("");
   const [renewing, setRenewing] = useState(false);
@@ -64,14 +68,27 @@ function EnrollmentRecord({ id }: { id: string }) {
                 Cancelar matrícula
               </Button>
             )}
+            {value.administrative_status !== "cancelled" && user?.roles.includes("coordinator") && (
+              <Button variant="secondary" onClick={() => setSuspending(true)}>Suspender matrícula</Button>
+            )}
           </>
         }
       />
       {notice && <Notice tone="success">{notice}</Notice>}
+      {suspending && <ActionForm title="Suspender matrícula" endpoint={`enrollments/${id}/suspensions/`}
+        description="A suspensão impede a participação no período autorizado e não altera cobranças nem prorroga o contrato."
+        fields={[{ key: "starts_on", label: "Início", type: "date", required: true, default: today() },
+          { key: "ends_on", label: "Fim", type: "date", required: true },
+          { key: "reason", label: "Justificativa", type: "textarea", required: true, wide: true }]}
+        button="Registrar suspensão" onClose={() => setSuspending(false)} onSaved={() => setNotice("Suspensão registrada.")} />}
+      <section className="sheet section-pad"><h2>Suspensões</h2>
+        {suspensions.isPending ? <Loading /> : suspensions.error ? <ErrorNotice error={suspensions.error} /> : !suspensions.data?.length ? <p>Nenhuma suspensão registrada.</p> :
+          <ul>{suspensions.data.map((item) => <li key={item.id}>{date(item.starts_on)} a {date(item.ends_on)} · {String(item.reason)} · Conta #{String(item.actor)}</li>)}</ul>}
+      </section>
       {value.contract_version === 1 && <section className="sheet section-pad">
         <h2>Contrato e parcelas</h2>
         <p>Vigência: {date(value.start_date)} a {date(value.end_date)} · {String(value.installments)} parcelas · Total {money(value.amount)} · Taxa {money(value.fee_amount)}</p>
-        <Notice>Vencimentos provisórios: primeira cobrança dia 15 ou último dia do mês; seguintes no dia original da matrícula.</Notice>
+        <Notice>Consulte abaixo as datas e valores preservados no cronograma deste contrato.</Notice>
         <div className="contract-actions"><Button variant="secondary" onClick={() => setRepairing(true)}>Regularizar cobranças ausentes</Button>
         <Button variant="secondary" onClick={() => setRenewing(true)}>Renovar contrato</Button>
         </div>
@@ -104,7 +121,7 @@ function EnrollmentRecord({ id }: { id: string }) {
               </div>
               <div>
                 <dt>Plano</dt>
-                <dd>{label(value.plan)}</dd>
+                <dd>{value.plan_name || label(value.plan)}</dd>
               </div>
               <div>
                 <dt>Valor contratado</dt>
@@ -117,7 +134,7 @@ function EnrollmentRecord({ id }: { id: string }) {
             </dl>
             <div className="section-pad">
               <Notice tone="warning">
-                {value.contract_version === 1 ? 'Valores e cronograma originais preservados. Suspensão e alterações contratuais exigem definição própria.' : 'Matrícula legada: vigência e cronograma não foram inferidos. Requer revisão das condições originais.'}
+                {value.contract_version === 1 ? 'Valores e cronograma originais preservados. Alterações contratuais exigem procedimento próprio.' : 'Matrícula legada: vigência e cronograma não foram inferidos. Requer revisão das condições originais.'}
               </Notice>
             </div>
           </section>

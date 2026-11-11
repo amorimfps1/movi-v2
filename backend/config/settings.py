@@ -65,7 +65,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {'login': '20/hour', 'register': '10/hour'},
 }
 SPECTACULAR_SETTINGS = {'TITLE': 'MOVI+ API', 'VERSION': '1.0.0', 'SERVE_INCLUDE_SCHEMA': False,
-    'ENUM_NAME_OVERRIDES': {'UserRoleEnum':['communication','coordinator','instructor','secretary']}}
+    'ENUM_NAME_OVERRIDES': {'UserRoleEnum':['communication','coordinator','instructor','secretary'],
+                            'LeadStatusEnum':[('new','Novo'),('contacting','Em atendimento'),('waiting','Aguardando retorno'),('converted','Convertido'),('not_converted','Não convertido')]}}
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'

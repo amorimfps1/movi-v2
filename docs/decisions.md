@@ -1,5 +1,15 @@
 # Decisões institucionais pendentes
 
+## Aprovação das propostas — 11/11/2026
+
+O solicitante aprovou todas as propostas do documento `MOVIV2_Decisoes_de_Negocio_DN001_DN022.md` nesta conversa. Essa aprovação autoriza sua implementação; não significa que as funcionalidades estejam implementadas, testadas ou homologadas. As definições anteriormente confirmadas continuam aplicáveis conforme o documento consolidado. A matriz histórica abaixo ainda descreve o estado técnico anterior e deve ser atualizada à medida que cada entrega for concluída.
+
+- **DN-016 — apropriação de recebimentos antecipados:** o critério de distribuição entre períodos de prestação será configurado separadamente em cada contrato de instrutor. Decisão do solicitante nesta conversa; exige implementação e validação das opções de cálculo.
+- **DN-016 — pagamento recebido após a prestação:** o repasse pertence ao fechamento do mês da prestação; se já fechado, requer reabertura auditada. Decisão do solicitante nesta conversa.
+- **DN-011 — parcelas após cancelamento acadêmico:** cancelar parcelas não pagas referentes a períodos não prestados; manter parcelas já vencidas ou referentes a serviços prestados. Decisão do solicitante nesta conversa; exige identificar os períodos de serviço de cada obrigação e preservar o histórico.
+- **DN-021 — transferência:** o operador poderá escolher no site entre manter as condições do contrato e criar um novo contrato, conforme a transferência. A data de efeito e o histórico de ambos os vínculos devem ser preservados.
+- **DN-011 — parcelas e períodos diferentes:** quando o número de parcelas for diferente do número de meses de prestação, a Coordenação selecionará manualmente quais parcelas cancelar e registrará a justificativa. Parcelas já vencidas ou referentes a serviços prestados devem ser mantidas.
+
 ## Atualização — 03/11/2026
 
 O pedido `promptimpmodalidades.md` e respostas posteriores substituem as definições antigas de mensalidade/cobertura para contratos novos. Consulte [contracts-2026.md](contracts-2026.md) para DN-004/005/006/011/014 e WhatsApp manual. Ativação exige primeira parcela e taxa; renovação não repete taxa. Vencimentos provisórios e valores não definidos seguem pendentes. A matriz abaixo é histórica e não significa que todas as 22 decisões continuam integralmente indefinidas.

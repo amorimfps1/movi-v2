@@ -19,10 +19,10 @@ from rest_framework.exceptions import APIException, NotFound, PermissionDenied, 
 from billing.models import Charge, Enrollment, Payment
 from billing.services import evaluate_eligibility
 from core.audit import record
-from core.models import ClassGroup, Instructor
+from core.models import ClassGroup, Instructor, OperationLock
 from core.permissions import is_administrative, is_internal
 
-from .models import Attendance, Lesson
+from .models import Attendance, Lesson, TrialParticipation
 
 
 class AcademicConflict(APIException):
@@ -231,11 +231,35 @@ def correct_attendance(actor_id, lesson_id, marks, reason):
     return lesson
 
 
+def _schedule_lock():
+    OperationLock.objects.get_or_create(key='class-schedule')
+    OperationLock.objects.select_for_update().get(key='class-schedule')
+
+
+def _assert_available(group, on, instructor_id, start, end):
+    occurrences = {item.class_group_id: item for item in Lesson.objects.filter(date=on).select_related('class_group')}
+    for other in ClassGroup.objects.filter(active=True).exclude(pk=group.pk):
+        occurrence = occurrences.get(other.pk)
+        if occurrence and occurrence.status == Lesson.Status.CANCELLED:
+            continue
+        if not occurrence and on.weekday() not in other.weekdays:
+            continue
+        other_start = occurrence.replacement_start if occurrence and occurrence.replacement_start else other.start_time
+        other_end = occurrence.replacement_end if occurrence and occurrence.replacement_end else other.end_time
+        if start < other_end and end > other_start:
+            other_instructor = (occurrence.assigned_instructor_id if occurrence else None) or other.instructor_id
+            if instructor_id == other_instructor:
+                raise ValidationError({'instructor': 'O instrutor já possui atividade neste horário.'})
+            if group.room.strip().casefold() == other.room.strip().casefold():
+                raise ValidationError({'date': 'A sala já está ocupada neste horário.'})
+
+
 @transaction.atomic
 def save_lesson(actor_id, validated_data, lesson_id=None):
     actor = _actor(actor_id)
     if not is_administrative(actor):
         raise PermissionDenied("Somente Secretaria e Coordenação podem alterar aulas e atribuições.")
+    _schedule_lock()
     existing = Lesson.objects.filter(pk=lesson_id).values("class_group_id").first() if lesson_id else None
     if lesson_id and not existing:
         raise NotFound("Aula não encontrada.")
@@ -249,6 +273,10 @@ def save_lesson(actor_id, validated_data, lesson_id=None):
         raise AcademicConflict("A aula mudou. Atualize antes de editar.")
     if lesson and (lesson.status == Lesson.Status.COMPLETED or Attendance.objects.filter(lesson=lesson).exists()):
         raise AcademicConflict("Uma aula realizada não pode ser alterada sem política de correção.", ["DN-014", "DN-015"])
+    if lesson and lesson.trials.exists() and ((target and target.pk != lesson.class_group_id) or ('date' in validated_data and validated_data['date'] != lesson.date)):
+        raise ValidationError('Uma aula com histórico de experimentais não pode mudar de turma ou data.')
+    if lesson and lesson.replacement_for_id and any(key in validated_data and validated_data[key] != getattr(lesson, key) for key in ('date', 'class_group', 'assigned_instructor')):
+        raise ValidationError('Para alterar uma reposição, cancele-a e registre uma nova ocorrência.')
     if validated_data.get("status") == Lesson.Status.COMPLETED:
         raise ValidationError({"status": "Confirme a chamada para realizar a aula."})
     # Reopening a cancellation could change historical participation rights.
@@ -261,13 +289,51 @@ def save_lesson(actor_id, validated_data, lesson_id=None):
         duplicates = duplicates.exclude(pk=lesson.pk)
     if duplicates.exists():
         raise ValidationError({"date": "Já existe uma aula para esta turma e data."})
+    group = ClassGroup.objects.get(pk=class_id)
+    instructor = validated_data.get('assigned_instructor', lesson.assigned_instructor if lesson else None) or group.instructor
+    if validated_data.get('status', lesson.status if lesson else Lesson.Status.SCHEDULED) != Lesson.Status.CANCELLED:
+        _assert_available(group, date, instructor.pk, lesson.replacement_start if lesson and lesson.replacement_start else group.start_time,
+                          lesson.replacement_end if lesson and lesson.replacement_end else group.end_time)
     if lesson:
         for key, value in validated_data.items():
             setattr(lesson, key, value)
         lesson.save()
+        if lesson.status == Lesson.Status.CANCELLED:
+            for trial in TrialParticipation.objects.select_for_update().filter(lesson=lesson, status='scheduled'):
+                trial.status = 'cancelled'
+                trial.save(update_fields=['status'])
+                record(actor, 'trial.cancelled', trial, reason='Aula cancelada.')
     else:
         lesson = Lesson.objects.create(**validated_data)
     record(actor, "lesson.updated" if lesson_id else "lesson.created", lesson,
            metadata={"class_group": lesson.class_group_id, "date": str(lesson.date),
                      "assigned_instructor": lesson.assigned_instructor_id, "status": lesson.status})
     return lesson
+
+
+@transaction.atomic
+def create_replacement(actor_id, source_id, data):
+    actor = _actor(actor_id)
+    if not is_administrative(actor):
+        raise PermissionDenied('Somente Secretaria e Coordenação podem agendar reposições.')
+    _schedule_lock()
+    source_ref = Lesson.objects.filter(pk=source_id).values('class_group_id').first()
+    if not source_ref:
+        raise NotFound('Aula não encontrada.')
+    group = ClassGroup.objects.select_for_update().get(pk=source_ref['class_group_id'])
+    source = Lesson.objects.select_for_update().get(pk=source_id)
+    instructor = Instructor.objects.select_for_update().get(pk=data['instructor'].pk)
+    if source.class_group_id != group.pk:
+        raise AcademicConflict('A aula mudou. Atualize antes de agendar.')
+    if not group.active or not instructor.active or not instructor.specialties.filter(pk=group.modality_id).exists():
+        raise ValidationError({'instructor': 'Selecione instrutor ativo com especialidade na modalidade da turma.'})
+    if data['date'] < timezone.localdate():
+        raise ValidationError({'date': 'A reposição deve ser agendada para hoje ou data futura.'})
+    if Lesson.objects.filter(class_group=group, date=data['date']).exists():
+        raise ValidationError({'date': 'Já existe uma aula para esta turma e data.'})
+    _assert_available(group, data['date'], instructor.pk, data['start_time'], data['end_time'])
+    replacement = Lesson.objects.create(class_group=group, date=data['date'], assigned_instructor=instructor,
+        replacement_for=source, replacement_start=data['start_time'], replacement_end=data['end_time'], replacement_reason=data['reason'])
+    record(actor, 'lesson.replacement_created', replacement, reason=data['reason'], metadata={'original': source.pk,
+        'date': data['date'].isoformat(), 'start_time': data['start_time'].isoformat(), 'end_time': data['end_time'].isoformat(), 'instructor': instructor.pk})
+    return replacement

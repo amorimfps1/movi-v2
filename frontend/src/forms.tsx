@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RecordData } from "./types";
-import { optionsFor, post, patch } from "./api";
+import { api, optionsFor, post, patch } from "./api";
 import { Button, Field, ErrorNotice, Modal, Loading, Notice } from "./ui";
 export type Option = { value: string | number; label: string };
 export type FieldSpec = {
@@ -65,6 +65,25 @@ export function RecordForm({
   const [pending, setPending] = useState(false);
   const [priceTouched, setPriceTouched] = useState(false);
   const [priceSuggested, setPriceSuggested] = useState(false);
+  const contractForm = endpoint === 'enrollments/' || /^enrollments\/\d+\/renew\/$/.test(endpoint);
+  const contractDate = String(values.start_date || '');
+  const financialOptions = useQuery({
+    queryKey: ['financial-options', contractDate],
+    queryFn: async () => {
+      const data = await api<{ plans: { code: string; name: string; installments: number[] }[]; methods: string[] }>(`financial-options/?${new URLSearchParams({ on: contractDate })}`);
+      if (!Array.isArray(data.plans) || !Array.isArray(data.methods)) throw new Error('Não foi possível interpretar as opções da tabela financeira.');
+      return data;
+    },
+    enabled: contractForm && !!contractDate,
+    retry: false,
+  });
+  useEffect(() => {
+    if (!contractForm || !financialOptions.data) return;
+    setValues((previous) => ({ ...previous,
+      plan: financialOptions.data.plans.some((plan) => plan.code === previous.plan) ? previous.plan : '',
+      payment_method: financialOptions.data.methods.includes(String(previous.payment_method)) ? previous.payment_method : '',
+    }));
+  }, [contractForm, financialOptions.data]);
   const paths = [
     ...new Set(
       [
@@ -80,9 +99,11 @@ export function RecordForm({
       retry: false,
     })),
   });
-  const lookupError = lookupQueries.find((query) => query.error)?.error;
-  const loading = lookupQueries.some((query) => query.isPending);
+  const lookupError = lookupQueries.find((query) => query.error)?.error || (contractForm ? financialOptions.error : undefined);
+  const loading = lookupQueries.some((query) => query.isPending) || (contractForm && !!contractDate && financialOptions.isPending);
   const options = (field: FieldSpec): Option[] =>
+    (contractForm && field.key === 'plan' && financialOptions.data ? financialOptions.data.plans.map((plan) => ({ value: plan.code, label: plan.name })) : undefined) ??
+    (contractForm && field.key === 'payment_method' && financialOptions.data ? financialOptions.data.methods.map((method) => ({ value: method, label: method === 'card' ? 'Cartão' : method === 'boleto' ? 'Boleto' : method })) : undefined) ??
     field.options ??
     (lookupQueries[paths.indexOf(field.lookup ?? "")]?.data ?? []).map(
       (row) => ({
@@ -164,6 +185,7 @@ export function RecordForm({
   return (
     <Modal open title={title} onClose={() => !pending && onClose()}>
       <form onSubmit={submit}>
+        {contractForm && financialOptions.data && !financialOptions.data.plans.length && <Notice tone="warning">Não há tabela financeira publicada para a data escolhida.</Notice>}
         {loading ? (
           <Loading />
         ) : lookupError ? (
@@ -172,7 +194,7 @@ export function RecordForm({
             <Button
               variant="secondary"
               onClick={() =>
-                lookupQueries.forEach((query) => void query.refetch())
+                { lookupQueries.forEach((query) => void query.refetch()); if (contractForm && contractDate) void financialOptions.refetch(); }
               }
             >
               Tentar carregar opções novamente

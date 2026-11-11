@@ -48,11 +48,15 @@ import { AcademicList, ClassDetail, LessonDetail } from "./Academic";
 import { Finance, ChargeDetail, PaymentDetail } from "./Finance";
 import { Reports, PoliciesPage } from "./Reports";
 import { AccessList, AccessDetail, AuditList, AuditDetail } from "./Management";
+import { FinancialCatalog } from "./FinancialCatalog";
+import { LeadRetention } from "./LeadRetention";
 type NavItem = {
   path: string;
   label: string;
   icon: LucideIcon;
   admin?: boolean;
+  coordinator?: boolean;
+  commercial?: boolean;
   academic?: boolean;
 };
 const groups: { label: string; items: NavItem[] }[] = [
@@ -65,7 +69,7 @@ const groups: { label: string; items: NavItem[] }[] = [
         path: "/interessados",
         label: "Leads",
         icon: ContactRound,
-        admin: true,
+        commercial: true,
       },
       {
         path: "/matriculas",
@@ -100,13 +104,15 @@ const groups: { label: string; items: NavItem[] }[] = [
       { path: "/financeiro", label: "Financeiro", icon: Wallet, admin: true },
       { path: "/ecowork", label: "EcoWork", icon: Wallet, admin: true },
       { path: "/pessoas", label: "Pessoas", icon: UsersRound, admin: true },
+      { path: "/revisao-contatos", label: "Revisão de contatos", icon: History, admin: true },
       { path: "/relatorios", label: "Relatórios", icon: ChartNoAxesCombined },
       {
         path: "/acessos",
         label: "Contas e perfis",
         icon: ShieldCheck,
-        admin: true,
+        coordinator: true,
       },
+      { path: "/configuracoes-financeiras", label: "Tabelas financeiras", icon: Wallet, coordinator: true },
       { path: "/auditoria", label: "Histórico", icon: History, admin: true },
     ],
   },
@@ -178,6 +184,8 @@ function Shell() {
           {groups.map((group) => {
             const visible = group.items
               .filter((item) => !item.admin || admin)
+              .filter((item) => !item.coordinator || user.roles.includes("coordinator"))
+              .filter((item) => !item.commercial || admin || user.roles.includes("communication"))
               .filter((item) => !item.academic || admin || instructor)
               .filter(
                 (item) =>
@@ -261,6 +269,21 @@ function AdminGuard() {
   const { user } = useAuth();
   return isAdmin(user) ? <Outlet /> : <Unauthorized />;
 }
+function CoordinatorGuard() {
+  const { user } = useAuth();
+  return user?.roles.includes("coordinator") ? <Outlet /> : <Unauthorized />;
+}
+function CommercialGuard() {
+  const { user } = useAuth();
+  return isAdmin(user) || user?.roles.includes("communication") ? <Outlet /> : <Unauthorized />;
+}
+function CommercialLeads({ detail = false }: { detail?: boolean }) {
+  const { user } = useAuth();
+  const spec = isAdmin(user) ? leadSpec : { ...leadSpec, readOnly: true, filterFields: [],
+    fields: [...leadSpec.fields.filter((field) => ['name', 'email', 'phone', 'source', 'status'].includes(field.key)), { key: 'whatsapp', label: 'WhatsApp autorizado' }],
+    columns: [{ key: 'name', label: 'Lead' }, { key: 'email', label: 'E-mail autorizado' }, { key: 'phone', label: 'Telefone autorizado' }, { key: 'whatsapp', label: 'WhatsApp autorizado' }, { key: 'status', label: 'Situação' }] };
+  return detail ? <RecordDetail spec={spec} /> : <ResourceList spec={spec} />;
+}
 function AcademicGuard() {
   const { user } = useAuth();
   return isAdmin(user) || user?.roles.includes("instructor") ? (
@@ -340,6 +363,7 @@ export function App() {
           <Route index element={<Dashboard />} />
           <Route element={<AdminGuard />}>
             <Route path="ecowork" element={<EcoWork />} />
+            <Route path="revisao-contatos" element={<LeadRetention />} />
             {[personSpec, condominiumSpec, associationSpec, residenceSpec].map(spec => <Route key={spec.slug} path={spec.slug}>
               <Route index element={<ResourceList key={spec.slug} spec={spec} />} />
               <Route path=":id" element={<RecordDetail key={spec.slug} spec={spec} />} />
@@ -354,7 +378,7 @@ export function App() {
               element={<ResourceList key="enrollments" spec={enrollmentSpec} />}
             />
             <Route path="matriculas/:id" element={<EnrollmentDetail />} />
-            {[leadSpec, modalitySpec, instructorSpec].map((spec) => (
+            {[modalitySpec, instructorSpec].map((spec) => (
               <Route key={spec.slug} path={spec.slug}>
                 <Route
                   index
@@ -374,10 +398,17 @@ export function App() {
             <Route path="cobrancas/:id" element={<ChargeDetail />} />
             <Route path="recebimentos" element={<Finance payments />} />
             <Route path="recebimentos/:id" element={<PaymentDetail />} />
-            <Route path="acessos" element={<AccessList />} />
-            <Route path="acessos/:id" element={<AccessDetail />} />
+            <Route element={<CoordinatorGuard />}>
+              <Route path="acessos" element={<AccessList />} />
+              <Route path="acessos/:id" element={<AccessDetail />} />
+              <Route path="configuracoes-financeiras" element={<FinancialCatalog />} />
+            </Route>
             <Route path="auditoria" element={<AuditList />} />
             <Route path="auditoria/:id" element={<AuditDetail />} />
+          </Route>
+          <Route element={<CommercialGuard />}>
+            <Route path="interessados" element={<CommercialLeads />} />
+            <Route path="interessados/:id" element={<CommercialLeads detail />} />
           </Route>
           <Route element={<AcademicGuard />}>
             <Route path="turmas" element={<AcademicList classes />} />

@@ -9,8 +9,8 @@ from core.models import Instructor
 from core.permissions import IsInternal, is_administrative
 
 from .models import Lesson
-from .serializers import AttendanceHistorySerializer, AttendanceSubmissionSerializer, DecisionResponseSerializer, LessonSerializer, RosterSerializer
-from .services import attendance_history, roster, save_lesson, submit_attendance
+from .serializers import AttendanceHistorySerializer, AttendanceSubmissionSerializer, DecisionResponseSerializer, LessonSerializer, ReplacementSerializer, RosterSerializer
+from .services import attendance_history, create_replacement, roster, save_lesson, submit_attendance
 from .serializers import AttendanceCorrectionSerializer
 
 
@@ -22,6 +22,15 @@ class LessonViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
     search_fields = ["class_group__name", "class_group__modality__name"]
     ordering_fields = ["date", "id", "class_group__name"]
     ordering = ["-date", "-id"]
+
+    @extend_schema(request=ReplacementSerializer, responses=LessonSerializer)
+    @action(detail=True, methods=['post'])
+    def replacement(self, request, pk=None):
+        lesson = self.get_object()
+        serializer = ReplacementSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        replacement = create_replacement(request.user.pk, lesson.pk, serializer.validated_data)
+        return Response(LessonSerializer(replacement).data, status=201)
 
     @extend_schema(request=AttendanceCorrectionSerializer, responses=LessonSerializer)
     @action(detail=True, methods=['post'])

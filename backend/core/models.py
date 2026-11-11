@@ -56,6 +56,7 @@ class Person(models.Model):
     class Meta:
         db_table = "core_student"
         ordering = ["name", "id"]
+        constraints = [models.UniqueConstraint(fields=["cpf"], condition=~models.Q(cpf=""), name="core_person_cpf_nonempty_unique")]
 
     def save(self, *args, **kwargs):
         self.cpf = normalize_cpf(self.cpf)
@@ -149,6 +150,7 @@ class ClassGroup(models.Model):
     room = models.CharField(max_length=120)
     age_range = models.CharField(max_length=120, blank=True)
     capacity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    physical_capacity = models.PositiveIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
     active = models.BooleanField(default=True)
     allows_trial = models.BooleanField(default=False)
 
@@ -157,6 +159,7 @@ class ClassGroup(models.Model):
         constraints = [
             models.CheckConstraint(condition=models.Q(start_time__lt=models.F("end_time")), name="core_class_valid_times"),
             models.CheckConstraint(condition=models.Q(capacity__gte=1), name="core_class_positive_capacity"),
+            models.CheckConstraint(condition=models.Q(physical_capacity__isnull=True) | models.Q(physical_capacity__gte=models.F('capacity')), name='core_class_physical_capacity_valid'),
         ]
 
     def __str__(self):
@@ -208,6 +211,20 @@ class AuditEvent(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-id"]
+
+
+class ContactPreference(models.Model):
+    person = models.ForeignKey(Person, null=True, blank=True, on_delete=models.PROTECT, related_name='contact_preferences')
+    lead = models.ForeignKey(Lead, null=True, blank=True, on_delete=models.PROTECT, related_name='contact_preferences')
+    channel = models.CharField(max_length=12, choices=[('email', 'E-mail'), ('phone', 'Telefone'), ('whatsapp', 'WhatsApp')])
+    purpose = models.CharField(max_length=20, choices=[('commercial', 'Comercial'), ('administrative', 'Administrativa')])
+    allowed = models.BooleanField()
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        constraints = [models.CheckConstraint(condition=(models.Q(person__isnull=False, lead__isnull=True) | models.Q(person__isnull=True, lead__isnull=False)), name='contact_preference_one_subject')]
 
 
 class OperationLock(models.Model):

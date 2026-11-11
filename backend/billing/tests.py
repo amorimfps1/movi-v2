@@ -6,9 +6,9 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from core.models import User, Person, Modality, Instructor, ClassGroup, AuditEvent
-from .models import Enrollment, Charge, Payment
-from .services import evaluate_eligibility
+from core.models import User, Person, Modality, Instructor, ClassGroup, AuditEvent, Lead
+from .models import Enrollment, Charge, Payment, WaitingListEntry
+from .services import ensure_class_capacity, evaluate_eligibility
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
@@ -31,6 +31,37 @@ class FinancialTests(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(self.admin)
 
+    def test_capacity_checks_overlaps_throughout_contract(self):
+        from rest_framework.exceptions import ValidationError
+        self.group.capacity = 1
+        self.group.save(update_fields=['capacity'])
+        self.enrollment.start_date = self.today + timedelta(days=10)
+        self.enrollment.end_date = self.today + timedelta(days=20)
+        self.enrollment.save(update_fields=['start_date', 'end_date'])
+        with self.assertRaises(ValidationError):
+            ensure_class_capacity(self.group, self.today, self.today + timedelta(days=15))
+        ensure_class_capacity(self.group, self.today, self.today + timedelta(days=9))
+        ensure_class_capacity(self.group, self.today + timedelta(days=21), None)
+
+    def test_suspension_requires_coordinator_and_blocks_participation_by_date(self):
+        url = f'/api/enrollments/{self.enrollment.pk}/suspensions/'
+        payload = {'starts_on': self.today.isoformat(), 'ends_on': (self.today + timedelta(days=2)).isoformat(), 'reason': 'Solicitação'}
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 403)
+        coordinator = User.objects.create_user(email='coord@example.test', password='Movi-test-2026!', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 201)
+        self.assertEqual(evaluate_eligibility(self.enrollment, self.today)['status'], 'suspended')
+        self.assertNotEqual(evaluate_eligibility(self.enrollment, self.today + timedelta(days=3))['status'], 'suspended')
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 400)
+        self.assertTrue(AuditEvent.objects.filter(action='enrollment.suspended', reason='Solicitação').exists())
+
+    def test_suspension_rejects_retroactive_and_overlong_periods(self):
+        coordinator = User.objects.create_user(email='coord@example.test', password='Movi-test-2026!', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        url = f'/api/enrollments/{self.enrollment.pk}/suspensions/'
+        for start, end in [(self.today - timedelta(days=1), self.today), (self.today, self.today + timedelta(days=30))]:
+            self.assertEqual(self.client.post(url, {'starts_on': start.isoformat(), 'ends_on': end.isoformat(), 'reason': 'Pedido'}, format='json').status_code, 400)
+
     def test_academic_count_and_list_exclude_people_without_enrollment(self):
         Person.objects.create(name='Frequentador sem matrícula')
         Enrollment.objects.create(student=self.student, class_group=self.group, start_date=self.today, plan='monthly', amount='100.00')
@@ -38,6 +69,93 @@ class FinancialTests(TestCase):
         self.assertEqual(result.data['students'], 1)
         result = self.client.get('/api/students/?has_enrollments=true')
         self.assertEqual([row['id'] for row in result.data['results']], [self.student.pk])
+
+    def test_occupancy_separates_regular_experimental_and_waiting(self):
+        trial = Person.objects.create(name='Experimental')
+        Enrollment.objects.create(student=trial, class_group=self.group, start_date=self.today, plan='monthly', amount='100.00', kind='trial')
+        for name in ('Espera A', 'Espera B'):
+            WaitingListEntry.objects.create(person=Person.objects.create(name=name), class_group=self.group, actor=self.admin)
+        response = self.client.get('/api/reports/occupancy/')
+        self.assertEqual(response.status_code, 200)
+        row = response.data['classes'][0]
+        self.assertEqual((row['regular'], row['experimental'], row['waiting']), (1, 1, 2))
+        self.assertEqual(row['percent'], Decimal('10.00'))
+
+    def test_frequency_uses_completed_lessons_and_consecutive_marks(self):
+        from academic.models import Attendance, Lesson
+        self.enrollment.start_date = self.today - timedelta(days=100)
+        self.enrollment.save(update_fields=['start_date'])
+        for days_ago, present, status in [(1, False, 'completed'), (2, False, 'completed'),
+                                           (3, False, 'completed'), (4, True, 'cancelled'),
+                                           (45, True, 'completed')]:
+            lesson = Lesson.objects.create(class_group=self.group, date=self.today - timedelta(days=days_ago), status=status)
+            Attendance.objects.create(lesson=lesson, enrollment=self.enrollment, actor=self.admin, present=present)
+        result = self.client.get('/api/reports/frequency/')
+        self.assertEqual(result.status_code, 200)
+        row = result.data['enrollments'][0]
+        self.assertEqual(row['short_window']['percent'], Decimal('0.00'))
+        self.assertEqual(row['long_window']['percent'], Decimal('25.00'))
+        self.assertEqual(row['consecutive_absences'], 3)
+        self.assertTrue(row['alert'])
+
+    def test_frequency_settings_require_coordinator_and_are_audited(self):
+        url = '/api/reports/frequency-policy/'
+        payload = {'short_days': 7, 'long_days': 14, 'absence_threshold': 2, 'reason': 'Ajuste aprovado'}
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 403)
+        coordinator = User.objects.create_user(email='coord@example.test', password='Movi-test-2026!', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 200)
+        result = self.client.get('/api/reports/frequency/').data
+        self.assertEqual((result['short_days'], result['long_days'], result['absence_threshold']), (7, 14, 2))
+        self.assertTrue(AuditEvent.objects.filter(action='frequency_policy.updated', reason='Ajuste aprovado').exists())
+
+    def test_conversion_counts_cohort_and_only_explicit_enrollment_origin(self):
+        lead = Lead.objects.create(name='Convertido', status='converted', student=self.student)
+        Lead.objects.create(name='Novo')
+        url = f'/api/reports/conversion/?start={self.today.isoformat()}&end={self.today.isoformat()}'
+        before = self.client.get(url).data
+        self.assertEqual((before['leads'], before['converted_people'], before['converted_enrollments']), (2, 1, 0))
+        self.enrollment.source_lead = lead
+        self.enrollment.save(update_fields=['source_lead'])
+        Enrollment.objects.create(student=self.student, class_group=self.group, start_date=self.today, plan='monthly', amount='100.00', source_lead=lead)
+        after = self.client.get(url).data
+        self.assertEqual((after['converted_enrollments'], after['enrollment_percent']), (1, Decimal('50.00')))
+        communicator = User.objects.create_user(email='com@example.test', password='Movi-test-2026!', access_status='approved', roles=['communication'])
+        self.client.force_authenticate(communicator)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_attrition_excludes_unknown_history_and_separates_completed(self):
+        start = self.today - timedelta(days=20)
+        self.enrollment.start_date = self.today - timedelta(days=40)
+        self.enrollment.end_date = self.today + timedelta(days=10)
+        self.enrollment.administrative_status = 'cancelled'
+        self.enrollment.cancelled_on = self.today - timedelta(days=5)
+        self.enrollment.save()
+        Enrollment.objects.create(student=self.student, class_group=self.group, start_date=start - timedelta(days=1),
+            end_date=self.today - timedelta(days=1), plan='monthly', amount='100.00')
+        Enrollment.objects.create(student=self.student, class_group=self.group, start_date=start - timedelta(days=1),
+            plan='monthly', amount='100.00')
+        Enrollment.objects.create(student=self.student, class_group=self.group, start_date=start - timedelta(days=1),
+            end_date=self.today + timedelta(days=10), administrative_status='cancelled', plan='monthly', amount='100.00')
+        result = self.client.get(f'/api/reports/attrition/?start={start.isoformat()}&end={self.today.isoformat()}')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual((result.data['active_at_start'], result.data['early_cancellations'], result.data['normal_completions']), (2, 1, 1))
+        self.assertEqual((result.data['unknown_end'], result.data['unknown_cancellation']), (1, 1))
+        self.assertEqual(result.data['percent'], Decimal('50.00'))
+
+    def test_cancellation_date_backfill_uses_only_explicit_audit_date(self):
+        from importlib import import_module
+        from types import SimpleNamespace
+        from django.apps import apps
+        from django.db import connection
+        self.enrollment.administrative_status = 'cancelled'
+        self.enrollment.save(update_fields=['administrative_status'])
+        AuditEvent.objects.create(actor=self.admin, action='enrollment.cancelled', target_type='billing.enrollment',
+                                  target_id=str(self.enrollment.pk), metadata={'effective_on': self.today.isoformat()})
+        migration = import_module('billing.migrations.0012_enrollment_cancelled_on')
+        migration.restore_cancellation_dates(apps, SimpleNamespace(connection=connection))
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.enrollment.cancelled_on, self.today)
 
     def charge(self,category='tuition',due=None):
         return Charge.objects.create(enrollment=self.enrollment,category=category,
@@ -58,11 +176,20 @@ class FinancialTests(TestCase):
         self.assertEqual(self.receive(self.charge('enrollment_fee')).status_code,201)
         self.assertIsNot(evaluate_eligibility(self.enrollment)['eligible'],True)
 
-    def test_underpaid_not_settled_and_no_partial_write(self):
+    def test_partial_requires_unique_key_and_preserves_balance(self):
         charge = self.charge()
-        self.assertEqual(self.receive(charge,'60.00').status_code,409)
+        self.assertEqual(self.receive(charge,'60.00').status_code,400)
+        data = {'amount': '60.00', 'paid_on': self.today.isoformat(), 'method': 'pix', 'request_key': '132bff7d-775a-4482-966a-a77c5bde0172'}
+        url = f'/api/charges/{charge.pk}/receive/'
+        self.assertEqual(self.client.post(url, data, format='json').status_code, 201)
+        self.assertEqual(self.client.post(url, data, format='json').status_code, 200)
+        self.assertEqual(self.client.post(url, {**data, 'amount': '50.00'}, format='json').status_code, 400)
         self.assertFalse(charge.is_paid)
-        self.assertEqual(Payment.objects.count(),0)
+        self.assertEqual(charge.received, Decimal('60.00'))
+        data.update(amount='40.00', request_key='1b4e99bd-e7ea-4c39-a459-4c4a26a2c001')
+        self.assertEqual(self.client.post(url, data, format='json').status_code, 201)
+        self.assertTrue(charge.is_paid)
+        self.assertEqual(Payment.objects.count(), 2)
 
     def test_excess_not_recorded_without_policy(self):
         charge = self.charge()

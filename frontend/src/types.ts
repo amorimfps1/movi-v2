@@ -5,6 +5,7 @@ export type User = {
   first_name: string;
   last_name: string;
   access_status: "pending" | "approved" | "rejected";
+  is_active?: boolean;
   roles: Role[];
 };
 export type RecordData = { id: number; [key: string]: unknown };
@@ -37,6 +38,7 @@ export type Enrollment = RecordData & {
   class_name: string;
   start_date: string;
   plan: string;
+  plan_name?: string;
   amount: string;
   administrative_status: string;
   kind: string;

@@ -38,3 +38,10 @@ class IsAdministrative(BasePermission):
 
     def has_permission(self, request, view):
         return is_administrative(request.user)
+
+
+class IsCoordinator(BasePermission):
+    message = "Esta operação requer Coordenação."
+
+    def has_permission(self, request, view):
+        return is_internal(request.user) and "coordinator" in request.user.roles

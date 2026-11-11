@@ -101,7 +101,7 @@ export function AccessDetail() {
   const { user: actor } = useAuth();
   const query = useApi<User>(`users/${id}/`);
   const [action, setAction] = useState<
-    "approve" | "add-role" | "remove-role" | "reject" | null
+    "approve" | "add-role" | "remove-role" | "reject" | "reopen" | "deactivate" | null
   >(null);
   const [success, setSuccess] = useState("");
   if (query.isPending) return <Loading />;
@@ -109,6 +109,8 @@ export function AccessDetail() {
   if (!query.data) return null;
   const user = query.data;
   const self = user.id === actor?.id;
+  const canManage = !!actor?.roles.includes("coordinator") && !self;
+  const active = user.is_active !== false;
   return (
     <>
       <Link className="back-link" to="/acessos">
@@ -134,6 +136,7 @@ export function AccessDetail() {
             <Badge value={user.access_status} />
           </div>
           <dl className="details-list">
+            <div><dt>Conta</dt><dd>{active ? "Ativa" : "Desativada"}</dd></div>
             <div>
               <dt>Funções atribuídas</dt>
               <dd>
@@ -158,14 +161,14 @@ export function AccessDetail() {
           </div>
           <div className="access-actions">
             {user.access_status === "pending" && (
-              <Button disabled={self} onClick={() => setAction("approve")}>
+              <Button disabled={!canManage || !active} onClick={() => setAction("approve")}>
                 <Check size={17} />
                 Aprovar solicitação
               </Button>
             )}
             <Button
               variant="secondary"
-              disabled={self}
+              disabled={!canManage || !active || user.access_status !== "approved"}
               onClick={() => setAction("add-role")}
             >
               <Plus size={17} />
@@ -174,7 +177,7 @@ export function AccessDetail() {
             {user.roles.length > 0 && (
               <Button
                 variant="secondary"
-                disabled={self}
+                disabled={!canManage || !active}
                 onClick={() => setAction("remove-role")}
               >
                 <UserRoundMinus size={17} />
@@ -183,12 +186,22 @@ export function AccessDetail() {
             )}
             <Button
               variant="secondary"
-              disabled={self || user.access_status === "rejected"}
+              disabled={!canManage || !active || user.access_status === "rejected"}
               onClick={() => setAction("reject")}
             >
               <X size={17} />
               Rejeitar acesso
             </Button>
+            {user.access_status === "rejected" && active && (
+              <Button variant="secondary" disabled={!canManage} onClick={() => setAction("reopen")}>
+                Reabrir solicitação
+              </Button>
+            )}
+            {active && (
+              <Button variant="secondary" disabled={!canManage} onClick={() => setAction("deactivate")}>
+                Desativar conta
+              </Button>
+            )}
             <p className="period-note">
               Aprovar substitui a lista de funções. Adicionar função é uma
               operação distinta. Remover a última função devolve a conta à
@@ -203,30 +216,30 @@ export function AccessDetail() {
           </div>
         </section>
       </div>
-      {action === "reject" && (
+      {(action === "reject" || action === "reopen" || action === "deactivate") && (
         <ActionForm
-          title="Rejeitar acesso"
-          endpoint={`users/${id}/reject/`}
-          description="A conta ficará rejeitada e perderá as funções atuais. Registre o motivo da decisão."
+          title={action === "reject" ? "Rejeitar acesso" : action === "reopen" ? "Reabrir solicitação" : "Desativar conta"}
+          endpoint={`users/${id}/${action}/`}
+          description={action === "reject" ? "A conta ficará rejeitada e perderá as funções atuais." : action === "reopen" ? "A solicitação voltará a ficar pendente de aprovação." : "A conta perderá o acesso imediatamente e seu histórico será preservado."}
           fields={[
             {
               key: "reason",
-              label: "Motivo da rejeição",
+              label: "Motivo da decisão",
               type: "textarea",
               required: true,
               wide: true,
             },
           ]}
-          button="Confirmar rejeição"
+          button="Confirmar decisão"
           onClose={() => setAction(null)}
           onSaved={() =>
             setSuccess(
-              "Acesso rejeitado. A decisão foi registrada no histórico.",
+              "Decisão registrada no histórico.",
             )
           }
         />
       )}
-      {action && action !== "reject" && (
+      {(action === "approve" || action === "add-role" || action === "remove-role") && (
         <AccessAction
           user={user}
           action={action}
@@ -255,6 +268,7 @@ function AccessAction({
   const [roles, setRoles] = useState<Role[]>([]);
   const [role, setRole] = useState<Role | "">("");
   const [instructor, setInstructor] = useState("");
+  const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>();
   const client = useQueryClient();
@@ -294,6 +308,7 @@ function AccessAction({
           try {
             await post(`users/${user.id}/${action}/`, {
               ...(action === "approve" ? { roles } : { role }),
+              ...(action === "approve" ? {} : { reason }),
               ...(needsInstructor && instructor
                 ? { instructor_id: Number(instructor) }
                 : {}),
@@ -312,7 +327,7 @@ function AccessAction({
           {action === "approve"
             ? "A aprovação atribui as funções selecionadas e libera somente as rotinas correspondentes."
             : action === "add-role"
-              ? "Adicionar mantém as funções existentes e aprova a conta. Confirme a responsabilidade atribuída."
+              ? "Adicionar mantém as funções existentes. Confirme a responsabilidade atribuída."
               : "Remover a última função revoga o acesso interno e devolve a conta à situação pendente."}
         </Notice>
         {action === "approve" ? (
@@ -387,6 +402,7 @@ function AccessAction({
             )}
           </div>
         )}
+        {action !== "approve" && <Field label="Justificativa"><textarea required rows={3} value={reason} onChange={(event) => setReason(event.target.value)} /></Field>}
         <ErrorNotice error={error} />
         <div className="form-actions">
           <Button
@@ -401,6 +417,7 @@ function AccessAction({
             type="submit"
             disabled={
               pending ||
+              (action !== "approve" && !reason.trim()) ||
               (action === "approve" ? !roles.length : !role) ||
               (needsInstructor && !!options.error)
             }

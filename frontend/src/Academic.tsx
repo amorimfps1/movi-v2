@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { RecordData } from "./types";
 import { useAuth, isAdmin } from "./auth";
+import { Trials } from "./Trials";
 import { useApi } from "./query";
 import { post } from "./api";
 import { ResourceList } from "./resources";
@@ -94,6 +95,7 @@ export function LessonDetail() {
   );
   const [marks, setMarks] = useState<Record<number, boolean>>({});
   const [editing, setEditing] = useState(false);
+  const [replacing, setReplacing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [success, setSuccess] = useState("");
   const [correction, setCorrection] = useState<{enrollment: number; present: boolean} | null>(null);
@@ -130,17 +132,25 @@ export function LessonDetail() {
         eyebrow={`DIÁRIO · AULA #${id}`}
         title={String(lesson.class_name)}
         description={`${date(lesson.date)} · ${String(lesson.instructor_name)}`}
-        actions={
-          admin &&
-          lesson.status !== "completed" && (
+        actions={admin && <>
+          {lesson.status !== "completed" && (
             <Button variant="secondary" onClick={() => setEditing(true)}>
               <Pencil size={17} />
               Editar aula / substituição
             </Button>
-          )
-        }
+          )}
+          <Button variant="secondary" onClick={() => setReplacing(true)}>Agendar reposição</Button>
+        </>}
       />
       {success && <Notice tone="success">{success}</Notice>}
+      {replacing && <RecordForm title="Agendar reposição" endpoint={`lessons/${id}/replacement/`} fields={[
+        { key: 'date', label: 'Data da reposição', type: 'date', required: true, default: today() },
+        { key: 'start_time', label: 'Início', type: 'time', required: true },
+        { key: 'end_time', label: 'Fim', type: 'time', required: true },
+        { key: 'instructor', label: 'Instrutor', type: 'select', lookup: 'instructors/', required: true },
+        { key: 'reason', label: 'Justificativa', type: 'textarea', required: true, wide: true },
+      ]} onClose={() => setReplacing(false)} onSaved={(row) => setSuccess(`Reposição agendada como aula #${row.id}.`)} />}
+      {!!lesson.replacement_for && <Notice>Reposição da <Link to={`/aulas/${lesson.replacement_for}`}>aula #{String(lesson.replacement_for)}</Link> · {String(lesson.replacement_start)}–{String(lesson.replacement_end)}. Motivo: {String(lesson.replacement_reason)}</Notice>}
       <section className="lesson-heading">
         <div>
           <CalendarDays size={22} />
@@ -166,6 +176,7 @@ export function LessonDetail() {
           DN-015.
         </Notice>
       )}
+      <Trials lessonId={id!} lessonStatus={String(lesson.status)} admin={admin} />
       <section className="sheet roster-sheet">
         <div className="section-heading">
           <div>

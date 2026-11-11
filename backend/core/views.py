@@ -1,10 +1,15 @@
 from django.apps import apps
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError, transaction
+from django.db.models import CharField, OuterRef, Subquery
+from django.db.models.functions import Cast, Coalesce
+from django.utils import timezone
+from calendar import monthrange
+from datetime import date
 from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from config.pagination import StandardPagination
@@ -18,11 +23,11 @@ from rest_framework import serializers
 
 from .audit import record
 from .filters import PersonFilter, with_person_links
-from .models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Person, User
-from .permissions import IsAdministrative, IsInternal, is_administrative, is_internal
+from .models import AuditEvent, ClassGroup, ContactPreference, Instructor, Lead, Modality, OperationLock, Person, User
+from .permissions import IsAdministrative, IsCoordinator, IsInternal, is_administrative, is_internal
 from .serializers import (
     AccessRoleSerializer, AccessRolesSerializer, AuditSerializer, ClassGroupSerializer,
-    ConvertSerializer, InstructorSerializer, LeadSerializer, LoginSerializer,
+    ConvertSerializer, InstructorSerializer, LeadSerializer, CommercialLeadSerializer, ContactPreferenceSerializer, LoginSerializer,
     ModalitySerializer, ReasonSerializer, RegisterSerializer, PersonSerializer, UserSerializer,
 )
 from .services import change_access, convert_lead, lock_admin, lock_student_identities
@@ -117,7 +122,7 @@ class MeView(APIView):
 class UserViewSet(ListConfiguration, viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsInternal, IsAdministrative]
+    permission_classes = [IsInternal, IsCoordinator]
     filterset_fields = ["access_status"]
     search_fields = ["email", "first_name", "last_name"]
     ordering_fields = ["id", "email", "date_joined", "access_status"]
@@ -139,6 +144,16 @@ class UserViewSet(ListConfiguration, viewsets.ReadOnlyModelViewSet):
     def reject(self, request, pk=None):
         return self._change(request, "reject", ReasonSerializer)
 
+    @extend_schema(request=ReasonSerializer, responses=UserSerializer)
+    @action(detail=True, methods=["post"])
+    def reopen(self, request, pk=None):
+        return self._change(request, "reopen", ReasonSerializer)
+
+    @extend_schema(request=ReasonSerializer, responses=UserSerializer)
+    @action(detail=True, methods=["post"])
+    def deactivate(self, request, pk=None):
+        return self._change(request, "deactivate", ReasonSerializer)
+
     @extend_schema(request=AccessRoleSerializer, responses=UserSerializer)
     @action(detail=True, methods=["post"], url_path="add-role")
     def add_role(self, request, pk=None):
@@ -155,11 +170,19 @@ class AdministrativeModelViewSet(ListConfiguration, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "put", "patch", "head", "options"]
 
     def _lock_dependencies(self):
+        if self.queryset.model in (ClassGroup, Instructor):
+            OperationLock.objects.get_or_create(key='class-schedule')
+            OperationLock.objects.select_for_update().get(key='class-schedule')
         if self.queryset.model is Person:
             lock_student_identities()
             if self.kwargs.get("pk") and apps.is_installed("billing"):
                 enrollment_model = apps.get_model("billing", "Enrollment")
-                group_ids = enrollment_model.objects.filter(student_id=self.kwargs["pk"]).values_list("class_group_id", flat=True)
+                waiting_model = apps.get_model("billing", "WaitingListEntry")
+                group_ids = set(enrollment_model.objects.filter(student_id=self.kwargs["pk"]).values_list("class_group_id", flat=True))
+                group_ids.update(waiting_model.objects.filter(person_id=self.kwargs["pk"], status='waiting').values_list('class_group_id', flat=True))
+                if apps.is_installed('academic'):
+                    trial_model = apps.get_model('academic', 'TrialParticipation')
+                    group_ids.update(trial_model.objects.filter(person_id=self.kwargs['pk'], status='scheduled').values_list('lesson__class_group_id', flat=True))
                 list(ClassGroup.objects.select_for_update().filter(pk__in=group_ids).order_by("pk"))
         if self.queryset.model is Instructor and self.kwargs.get("pk"):
             # Same ordering as attendance: User, ClassGroup, then dependent rows.
@@ -189,6 +212,18 @@ class AdministrativeModelViewSet(ListConfiguration, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         before = dict(self.get_serializer(serializer.instance).data)
         instance = serializer.save()
+        if instance._meta.model_name == 'person' and instance.archived and not before.get('archived'):
+            waiting_model = apps.get_model('billing', 'WaitingListEntry')
+            for entry in waiting_model.objects.select_for_update().filter(person=instance, status='waiting'):
+                entry.status = 'cancelled'
+                entry.save(update_fields=['status'])
+                record(self.request.user, 'waiting_list.cancelled', entry, reason='Pessoa arquivada.')
+            if apps.is_installed('academic'):
+                trial_model = apps.get_model('academic', 'TrialParticipation')
+                for trial in trial_model.objects.select_for_update().filter(person=instance, status='scheduled'):
+                    trial.status = 'cancelled'
+                    trial.save(update_fields=['status'])
+                    record(self.request.user, 'trial.cancelled', trial, reason='Pessoa arquivada.')
         name = "student" if instance._meta.model_name == "person" else instance._meta.model_name
         record(self.request.user, f"{name}.update", instance, metadata={"before": before, "after": dict(self.get_serializer(instance).data)})
 
@@ -208,6 +243,54 @@ class LeadViewSet(AdministrativeModelViewSet):
     search_fields = ["name", "cpf", "email", "phone"]
     ordering_fields = ["id", "name", "created_at", "status"]
 
+    def get_permissions(self):
+        if self.action in {'list', 'retrieve'}:
+            return [IsInternal()]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if getattr(self, 'swagger_fake_view', False):
+            return queryset.none()
+        if is_administrative(self.request.user):
+            return queryset
+        if 'communication' in self.request.user.roles:
+            self.search_fields = ['name']
+            return queryset.prefetch_related('contact_preferences')
+        raise PermissionDenied('Seu perfil não permite consultar leads.')
+
+    def get_serializer_class(self):
+        if self.action in {'list', 'retrieve'} and not is_administrative(self.request.user):
+            return CommercialLeadSerializer
+        return super().get_serializer_class()
+
+    @extend_schema(responses=inline_serializer('LeadRetentionReviewList', {'results': serializers.ListField(child=serializers.DictField())}))
+    @action(detail=False, methods=['get'], url_path='retention-review')
+    def retention_review(self, request):
+        today = timezone.localdate()
+        events = AuditEvent.objects.filter(target_type='core.lead', target_id=Cast(OuterRef('pk'), output_field=CharField()),
+            action__in=['lead.create', 'lead.update', 'lead.convert', 'lead.retention.review']).order_by('-created_at', '-id')
+        leads = Lead.objects.annotate(last_activity=Coalesce(Subquery(events.values('created_at')[:1]), 'created_at')).order_by('last_activity', 'id')
+        results = []
+        for lead in leads:
+            last = timezone.localtime(lead.last_activity).date()
+            due = date(last.year + 1, last.month, min(last.day, monthrange(last.year + 1, last.month)[1]))
+            if due <= today:
+                results.append({'id': lead.pk, 'name': lead.name, 'status': lead.status, 'last_activity': last.isoformat(), 'review_due': due.isoformat()})
+        return Response({'results': results})
+
+    @extend_schema(request=ReasonSerializer, responses=inline_serializer('LeadRetentionReviewed', {'detail': serializers.CharField()}))
+    @action(detail=True, methods=['post'], url_path='review-retention')
+    @transaction.atomic
+    def review_retention(self, request, pk=None):
+        self.get_object()
+        data = ReasonSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        actor = lock_admin(request.user)
+        lead = Lead.objects.select_for_update().get(pk=pk)
+        record(actor, 'lead.retention.review', lead, reason=data.validated_data['reason'])
+        return Response({'detail': 'Revisão registrada; o histórico foi preservado.'})
+
     @extend_schema(request=ConvertSerializer, responses=LeadSerializer)
     @action(detail=True, methods=["post"])
     def convert(self, request, pk=None):
@@ -216,6 +299,42 @@ class LeadViewSet(AdministrativeModelViewSet):
         serializer.is_valid(raise_exception=True)
         lead, created = convert_lead(request.user, int(pk), serializer.validated_data)
         return Response(LeadSerializer(lead).data)
+
+
+class ContactPreferenceViewSet(ListConfiguration, mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
+    permission_classes = [IsInternal]
+    serializer_class = ContactPreferenceSerializer
+    queryset = ContactPreference.objects.all()
+    filterset_fields = ['person', 'lead', 'channel', 'purpose']
+    ordering_fields = ['created_at', 'id']
+
+    def get_permissions(self):
+        return [IsInternal(), IsAdministrative()] if self.action == 'create' else [IsInternal()]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if getattr(self, 'swagger_fake_view', False):
+            return queryset.none()
+        if is_administrative(self.request.user):
+            return queryset
+        if 'communication' in self.request.user.roles:
+            return queryset.filter(lead__isnull=False, purpose='commercial')
+        raise PermissionDenied('Seu perfil não permite consultar preferências de contato.')
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        actor = lock_admin(self.request.user)
+        lock_student_identities()
+        data = serializer.validated_data
+        if data.get('person'):
+            subject = Person.objects.select_for_update().get(pk=data['person'].pk)
+            if subject.archived:
+                raise ValidationError('Não é possível registrar preferência para pessoa arquivada.')
+        else:
+            subject = Lead.objects.select_for_update().get(pk=data['lead'].pk)
+        preference = serializer.save(actor=actor)
+        record(actor, 'contact.preference', preference, metadata={'subject_type': subject._meta.model_name,
+            'subject_id': subject.pk, 'channel': preference.channel, 'purpose': preference.purpose, 'allowed': preference.allowed})
 
 
 class ModalityViewSet(AdministrativeModelViewSet):

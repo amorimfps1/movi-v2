@@ -962,6 +962,121 @@ paths:
               schema:
                 $ref: '#/components/schemas/Condominium'
           description: ''
+  /api/contact-preferences/:
+    get:
+      operationId: contact_preferences_list
+      parameters:
+      - in: query
+        name: channel
+        schema:
+          type: string
+          enum:
+          - email
+          - phone
+          - whatsapp
+        description: |-
+          * `email` - E-mail
+          * `phone` - Telefone
+          * `whatsapp` - WhatsApp
+      - in: query
+        name: lead
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: person
+        schema:
+          type: integer
+      - in: query
+        name: purpose
+        schema:
+          type: string
+          enum:
+          - administrative
+          - commercial
+        description: |-
+          * `commercial` - Comercial
+          * `administrative` - Administrativa
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - contact-preferences
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedContactPreferenceList'
+          description: ''
+    post:
+      operationId: contact_preferences_create
+      tags:
+      - contact-preferences
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactPreference'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ContactPreference'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ContactPreference'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactPreference'
+          description: ''
+  /api/contact-preferences/{id}/:
+    get:
+      operationId: contact_preferences_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este contact preference.
+        required: true
+      tags:
+      - contact-preferences
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactPreference'
+          description: ''
   /api/ecowork/charges/:
     get:
       operationId: ecowork_charges_list
@@ -1823,6 +1938,373 @@ paths:
               schema:
                 $ref: '#/components/schemas/Enrollment'
           description: ''
+  /api/enrollments/{id}/suspensions/:
+    get:
+      operationId: enrollments_suspensions_list
+      parameters:
+      - in: query
+        name: administrative_status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - regular
+        description: |-
+          * `regular` - Regular
+          * `cancelled` - Cancelada
+      - in: query
+        name: class_group
+        schema:
+          type: integer
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - regular
+          - trial
+        description: |-
+          * `regular` - Comum
+          * `trial` - Experimental
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: plan
+        schema:
+          type: string
+          enum:
+          - monthly
+          - quarterly
+          - yearly
+        description: |-
+          * `monthly` - Mensal
+          * `quarterly` - Trimestral
+          * `yearly` - Anual
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: student
+        schema:
+          type: integer
+      tags:
+      - enrollments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSuspensionList'
+          description: ''
+    post:
+      operationId: enrollments_suspensions_create
+      parameters:
+      - in: query
+        name: administrative_status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - regular
+        description: |-
+          * `regular` - Regular
+          * `cancelled` - Cancelada
+      - in: query
+        name: class_group
+        schema:
+          type: integer
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este enrollment.
+        required: true
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - regular
+          - trial
+        description: |-
+          * `regular` - Comum
+          * `trial` - Experimental
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: plan
+        schema:
+          type: string
+          enum:
+          - monthly
+          - quarterly
+          - yearly
+        description: |-
+          * `monthly` - Mensal
+          * `quarterly` - Trimestral
+          * `yearly` - Anual
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: student
+        schema:
+          type: integer
+      tags:
+      - enrollments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Suspension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Suspension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Suspension'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSuspensionList'
+          description: ''
+  /api/financial-catalogs/:
+    get:
+      operationId: financial_catalogs_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - financial-catalogs
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCatalogList'
+          description: ''
+    post:
+      operationId: financial_catalogs_create
+      tags:
+      - financial-catalogs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+          description: ''
+  /api/financial-catalogs/{id}/:
+    get:
+      operationId: financial_catalogs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este financial catalog
+          version.
+        required: true
+      tags:
+      - financial-catalogs
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+          description: ''
+    patch:
+      operationId: financial_catalogs_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este financial catalog
+          version.
+        required: true
+      tags:
+      - financial-catalogs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCatalog'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+          description: ''
+  /api/financial-catalogs/{id}/preview/:
+    post:
+      operationId: financial_catalogs_preview_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este financial catalog
+          version.
+        required: true
+      tags:
+      - financial-catalogs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+          description: ''
+  /api/financial-catalogs/{id}/publish/:
+    post:
+      operationId: financial_catalogs_publish_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este financial catalog
+          version.
+        required: true
+      tags:
+      - financial-catalogs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+          description: ''
   /api/instructors/:
     get:
       operationId: instructors_list
@@ -2048,7 +2530,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedLeadList'
+                $ref: '#/components/schemas/PaginatedCommercialLeadList'
           description: ''
     post:
       operationId: leads_create
@@ -2094,7 +2576,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Lead'
+                $ref: '#/components/schemas/CommercialLead'
           description: ''
     put:
       operationId: leads_update
@@ -2452,6 +2934,39 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/AttendanceCorrection'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
+  /api/lessons/{id}/replacement/:
+    post:
+      operationId: lessons_replacement_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lesson.
+        required: true
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Replacement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Replacement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Replacement'
         required: true
       security:
       - cookieAuth: []
@@ -2915,6 +3430,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/Policies'
           description: ''
+  /api/reports/attrition/:
+    get:
+      operationId: reports_attrition_retrieve
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attrition'
+          description: ''
+  /api/reports/conversion/:
+    get:
+      operationId: reports_conversion_retrieve
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversion'
+          description: ''
   /api/reports/export/:
     get:
       operationId: reports_export_retrieve
@@ -2952,6 +3517,73 @@ paths:
               schema:
                 type: string
                 format: binary
+          description: ''
+  /api/reports/frequency/:
+    get:
+      operationId: reports_frequency_retrieve
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Frequency'
+          description: ''
+  /api/reports/frequency-policy/:
+    get:
+      operationId: reports_frequency_policy_retrieve
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrequencyPolicy'
+          description: ''
+    post:
+      operationId: reports_frequency_policy_create
+      tags:
+      - reports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FrequencyPolicy'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FrequencyPolicy'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FrequencyPolicy'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrequencyPolicy'
+          description: ''
+  /api/reports/occupancy/:
+    get:
+      operationId: reports_occupancy_retrieve
+      tags:
+      - reports
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Occupancy'
           description: ''
   /api/reports/summary/:
     get:
@@ -3264,6 +3896,210 @@ paths:
               schema:
                 $ref: '#/components/schemas/Person'
           description: ''
+  /api/trials/:
+    get:
+      operationId: trials_list
+      parameters:
+      - in: query
+        name: lesson
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: person
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - completed
+          - scheduled
+        description: |-
+          * `scheduled` - Agendada
+          * `completed` - Registrada
+          * `cancelled` - Cancelada
+      tags:
+      - trials
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTrialList'
+          description: ''
+    post:
+      operationId: trials_create
+      tags:
+      - trials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Trial'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Trial'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Trial'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trial'
+          description: ''
+  /api/trials/{id}/:
+    get:
+      operationId: trials_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este trial participation.
+        required: true
+      tags:
+      - trials
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trial'
+          description: ''
+  /api/trials/{id}/cancel/:
+    post:
+      operationId: trials_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este trial participation.
+        required: true
+      tags:
+      - trials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trial'
+          description: ''
+  /api/trials/{id}/correct/:
+    post:
+      operationId: trials_correct_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este trial participation.
+        required: true
+      tags:
+      - trials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrialCorrection'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrialCorrection'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrialCorrection'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trial'
+          description: ''
+  /api/trials/{id}/mark/:
+    post:
+      operationId: trials_mark_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este trial participation.
+        required: true
+      tags:
+      - trials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrialMark'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrialMark'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrialMark'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trial'
+          description: ''
   /api/users/:
     get:
       operationId: users_list
@@ -3402,6 +4238,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/users/{id}/deactivate/:
+    post:
+      operationId: users_deactivate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
   /api/users/{id}/reject/:
     post:
       operationId: users_reject_create
@@ -3467,6 +4336,177 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{id}/reopen/:
+    post:
+      operationId: users_reopen_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este user.
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/waiting-list/:
+    get:
+      operationId: waiting_list_list
+      parameters:
+      - in: query
+        name: class_group
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: person
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - enrolled
+          - waiting
+        description: |-
+          * `waiting` - Aguardando
+          * `cancelled` - Cancelada
+          * `enrolled` - Matriculada
+      tags:
+      - waiting-list
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWaitingListList'
+          description: ''
+    post:
+      operationId: waiting_list_create
+      tags:
+      - waiting-list
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WaitingList'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WaitingList'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WaitingList'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitingList'
+          description: ''
+  /api/waiting-list/{id}/:
+    get:
+      operationId: waiting_list_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este waiting list entry.
+        required: true
+      tags:
+      - waiting-list
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitingList'
+          description: ''
+  /api/waiting-list/{id}/cancel/:
+    post:
+      operationId: waiting_list_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este waiting list entry.
+        required: true
+      tags:
+      - waiting-list
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitingList'
           description: ''
 components:
   schemas:
@@ -3614,6 +4654,42 @@ components:
       required:
       - marks
       - version
+    Attrition:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        active_at_start:
+          type: integer
+        early_cancellations:
+          type: integer
+        normal_completions:
+          type: integer
+        unknown_end:
+          type: integer
+        unknown_cancellation:
+          type: integer
+        percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+        definition:
+          type: string
+      required:
+      - active_at_start
+      - definition
+      - early_cancellations
+      - end
+      - normal_completions
+      - percent
+      - start
+      - unknown_cancellation
+      - unknown_end
     Audit:
       type: object
       properties:
@@ -3677,6 +4753,60 @@ components:
       required:
       - mode
       - reason
+    Catalog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CatalogStatusEnum'
+          readOnly: true
+        effective_from:
+          type: string
+          format: date
+        effective_until:
+          type: string
+          format: date
+          nullable: true
+        configuration: {}
+        created_by:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - created_by
+      - effective_from
+      - id
+      - published_at
+      - published_by
+      - status
+      - version
+    CatalogStatusEnum:
+      enum:
+      - draft
+      - published
+      type: string
+      description: |-
+        * `draft` - Rascunho
+        * `published` - Publicado
     CategoryEnum:
       enum:
       - tuition
@@ -3687,6 +4817,16 @@ components:
         * `tuition` - Mensalidade
         * `enrollment_fee` - Taxa de matrícula
         * `extra` - Outra receita
+    ChannelEnum:
+      enum:
+      - email
+      - phone
+      - whatsapp
+      type: string
+      description: |-
+        * `email` - E-mail
+        * `phone` - Telefone
+        * `whatsapp` - WhatsApp
     Charge:
       type: object
       properties:
@@ -3792,6 +4932,44 @@ components:
       - name
       - room
       - start_time
+    CommercialLead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        whatsapp:
+          type: string
+          readOnly: true
+        source:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/LeadStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - id
+      - name
+      - phone
+      - source
+      - status
+      - whatsapp
     Condition:
       type: object
       properties:
@@ -3845,6 +5023,74 @@ components:
       - created_at
       - id
       - name
+    ContactPreference:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        person:
+          type: integer
+          nullable: true
+        lead:
+          type: integer
+          nullable: true
+        channel:
+          $ref: '#/components/schemas/ChannelEnum'
+        purpose:
+          $ref: '#/components/schemas/PurposeEnum'
+        allowed:
+          type: boolean
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor
+      - allowed
+      - channel
+      - created_at
+      - id
+      - purpose
+    Conversion:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        leads:
+          type: integer
+        converted_people:
+          type: integer
+        converted_enrollments:
+          type: integer
+        person_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+        enrollment_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+        definition:
+          type: string
+      required:
+      - converted_enrollments
+      - converted_people
+      - definition
+      - end
+      - enrollment_percent
+      - leads
+      - person_percent
+      - start
     Convert:
       type: object
       properties:
@@ -4055,6 +5301,11 @@ components:
           allOf:
           - $ref: '#/components/schemas/AdministrativeStatusEnum'
           readOnly: true
+        cancelled_on:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
         kind:
           $ref: '#/components/schemas/KindEnum'
         created_at:
@@ -4093,8 +5344,16 @@ components:
           nullable: true
         schedule:
           readOnly: true
+        financial_catalog:
+          type: integer
+          readOnly: true
+          nullable: true
+        source_lead:
+          type: integer
+          nullable: true
       required:
       - administrative_status
+      - cancelled_on
       - class_group
       - class_name
       - contract_version
@@ -4102,6 +5361,7 @@ components:
       - eligibility
       - end_date
       - fee_amount
+      - financial_catalog
       - id
       - plan
       - renewed_from
@@ -4125,6 +5385,96 @@ components:
           maxLength: 2000
       required:
       - reason
+    Frequency:
+      type: object
+      properties:
+        'on':
+          type: string
+          format: date
+        definition:
+          type: string
+        short_days:
+          type: integer
+        long_days:
+          type: integer
+        absence_threshold:
+          type: integer
+        enrollments:
+          type: array
+          items:
+            $ref: '#/components/schemas/FrequencyRow'
+      required:
+      - absence_threshold
+      - definition
+      - enrollments
+      - long_days
+      - 'on'
+      - short_days
+    FrequencyPolicy:
+      type: object
+      properties:
+        short_days:
+          type: integer
+          maximum: 3650
+          minimum: 1
+        long_days:
+          type: integer
+          maximum: 3650
+          minimum: 1
+        absence_threshold:
+          type: integer
+          maximum: 100
+          minimum: 1
+        reason:
+          type: string
+          writeOnly: true
+          maxLength: 2000
+      required:
+      - absence_threshold
+      - long_days
+      - reason
+      - short_days
+    FrequencyRow:
+      type: object
+      properties:
+        enrollment:
+          type: integer
+        person:
+          type: string
+        class_name:
+          type: string
+        short_window:
+          $ref: '#/components/schemas/FrequencyWindow'
+        long_window:
+          $ref: '#/components/schemas/FrequencyWindow'
+        consecutive_absences:
+          type: integer
+        alert:
+          type: boolean
+      required:
+      - alert
+      - class_name
+      - consecutive_absences
+      - enrollment
+      - long_window
+      - person
+      - short_window
+    FrequencyWindow:
+      type: object
+      properties:
+        present:
+          type: integer
+        absent:
+          type: integer
+        percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+      required:
+      - absent
+      - percent
+      - present
     Instructor:
       type: object
       properties:
@@ -4251,6 +5601,23 @@ components:
           type: string
           format: date-time
           readOnly: true
+        replacement_for:
+          type: integer
+          readOnly: true
+          nullable: true
+        replacement_start:
+          type: string
+          format: time
+          readOnly: true
+          nullable: true
+        replacement_end:
+          type: string
+          format: time
+          readOnly: true
+          nullable: true
+        replacement_reason:
+          type: string
+          readOnly: true
       required:
       - class_group
       - class_name
@@ -4259,6 +5626,10 @@ components:
       - id
       - instructor_name
       - name
+      - replacement_end
+      - replacement_for
+      - replacement_reason
+      - replacement_start
     LessonStatusEnum:
       enum:
       - scheduled
@@ -4412,6 +5783,49 @@ components:
     NullEnum:
       enum:
       - null
+    Occupancy:
+      type: object
+      properties:
+        'on':
+          type: string
+          format: date
+        definition:
+          type: string
+        classes:
+          type: array
+          items:
+            $ref: '#/components/schemas/OccupancyRow'
+      required:
+      - classes
+      - definition
+      - 'on'
+    OccupancyRow:
+      type: object
+      properties:
+        class_group:
+          type: integer
+        name:
+          type: string
+        capacity:
+          type: integer
+        regular:
+          type: integer
+        experimental:
+          type: integer
+        waiting:
+          type: integer
+        percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - capacity
+      - class_group
+      - experimental
+      - name
+      - percent
+      - regular
+      - waiting
     Order:
       type: object
       properties:
@@ -4636,6 +6050,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Audit'
+    PaginatedCatalogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Catalog'
     PaginatedChargeList:
       type: object
       required:
@@ -4682,6 +6119,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClassGroup'
+    PaginatedCommercialLeadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommercialLead'
     PaginatedConditionList:
       type: object
       required:
@@ -4728,6 +6188,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Condominium'
+    PaginatedContactPreferenceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactPreference'
     PaginatedEcoWorkChargeList:
       type: object
       required:
@@ -4820,29 +6303,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Instructor'
-    PaginatedLeadList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?page=4
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?page=2
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/Lead'
     PaginatedLessonList:
       type: object
       required:
@@ -5004,6 +6464,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Residence'
+    PaginatedSuspensionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Suspension'
+    PaginatedTrialList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trial'
     PaginatedUserList:
       type: object
       required:
@@ -5027,6 +6533,66 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/User'
+    PaginatedWaitingListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/WaitingList'
+    PatchedCatalog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CatalogStatusEnum'
+          readOnly: true
+        effective_from:
+          type: string
+          format: date
+        effective_until:
+          type: string
+          format: date
+          nullable: true
+        configuration: {}
+        created_by:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
     PatchedClassGroup:
       type: object
       properties:
@@ -5112,6 +6678,11 @@ components:
           allOf:
           - $ref: '#/components/schemas/AdministrativeStatusEnum'
           readOnly: true
+        cancelled_on:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
         kind:
           $ref: '#/components/schemas/KindEnum'
         created_at:
@@ -5150,6 +6721,13 @@ components:
           nullable: true
         schedule:
           readOnly: true
+        financial_catalog:
+          type: integer
+          readOnly: true
+          nullable: true
+        source_lead:
+          type: integer
+          nullable: true
     PatchedInstructor:
       type: object
       properties:
@@ -5244,6 +6822,23 @@ components:
         created_at:
           type: string
           format: date-time
+          readOnly: true
+        replacement_for:
+          type: integer
+          readOnly: true
+          nullable: true
+        replacement_start:
+          type: string
+          format: time
+          readOnly: true
+          nullable: true
+        replacement_end:
+          type: string
+          format: time
+          readOnly: true
+          nullable: true
+        replacement_reason:
+          type: string
           readOnly: true
     PatchedModality:
       type: object
@@ -5533,6 +7128,14 @@ components:
         * `monthly` - monthly
         * `semiannual` - semiannual
         * `annual` - annual
+    PurposeEnum:
+      enum:
+      - commercial
+      - administrative
+      type: string
+      description: |-
+        * `commercial` - Comercial
+        * `administrative` - Administrativa
     Quote:
       type: object
       properties:
@@ -5592,6 +7195,9 @@ components:
     Receipt:
       type: object
       properties:
+        request_key:
+          type: string
+          format: uuid
         amount:
           type: string
           format: decimal
@@ -5603,6 +7209,7 @@ components:
           $ref: '#/components/schemas/MethodEnum'
         reference:
           type: string
+          default: ''
           maxLength: 160
       required:
       - amount
@@ -5725,6 +7332,29 @@ components:
       - email
       - first_name
       - password
+    Replacement:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        instructor:
+          type: integer
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - date
+      - end_time
+      - instructor
+      - reason
+      - start_time
     Residence:
       type: object
       properties:
@@ -5903,6 +7533,105 @@ components:
       - pending_decisions
       - start
       - timezone
+    Suspension:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        reason:
+          type: string
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor
+      - created_at
+      - ends_on
+      - id
+      - reason
+      - starts_on
+    Trial:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        person:
+          type: integer
+        person_name:
+          type: string
+          readOnly: true
+        modality:
+          type: integer
+          readOnly: true
+        lesson:
+          type: integer
+        guardian_authorization:
+          type: boolean
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TrialStatusEnum'
+          readOnly: true
+        present:
+          type: boolean
+          readOnly: true
+          nullable: true
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor
+      - created_at
+      - id
+      - lesson
+      - modality
+      - person
+      - person_name
+      - present
+      - status
+    TrialCorrection:
+      type: object
+      properties:
+        present:
+          type: boolean
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - present
+      - reason
+    TrialMark:
+      type: object
+      properties:
+        present:
+          type: boolean
+      required:
+      - present
+    TrialStatusEnum:
+      enum:
+      - scheduled
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `scheduled` - Agendada
+        * `completed` - Registrada
+        * `cancelled` - Cancelada
     User:
       type: object
       properties:
@@ -5927,11 +7656,18 @@ components:
           readOnly: true
         roles:
           readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Ativo
+          description: Indica que o usuário será tratado como ativo. Ao invés de excluir
+            contas de usuário, desmarque isso.
       required:
       - access_status
       - email
       - first_name
       - id
+      - is_active
       - last_name
       - roles
     UserRoleEnum:
@@ -5946,6 +7682,57 @@ components:
         * `coordinator` - coordinator
         * `instructor` - instructor
         * `secretary` - secretary
+    WaitingList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        class_group:
+          type: integer
+        class_name:
+          type: string
+          readOnly: true
+        person:
+          type: integer
+        person_name:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/WaitingListStatusEnum'
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        enrollment:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor
+      - class_group
+      - class_name
+      - created_at
+      - enrollment
+      - id
+      - person
+      - person_name
+      - status
+    WaitingListStatusEnum:
+      enum:
+      - waiting
+      - cancelled
+      - enrolled
+      type: string
+      description: |-
+        * `waiting` - Aguardando
+        * `cancelled` - Cancelada
+        * `enrolled` - Matriculada
   securitySchemes:
     cookieAuth:
       type: apiKey

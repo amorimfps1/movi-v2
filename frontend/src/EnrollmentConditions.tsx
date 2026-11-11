@@ -9,6 +9,7 @@ type CommercialCondition = {
   amount: string;
   effective_on: string;
   plan: string;
+  plan_name?: string;
   actor: number;
   reason: string;
   created_at: string;
@@ -64,7 +65,7 @@ export function EnrollmentConditions({
             <dl className="details-list">
               <div>
                 <dt>Plano registrado</dt>
-                <dd>{label(condition.plan)}</dd>
+                <dd>{condition.plan_name || label(condition.plan)}</dd>
               </div>
               <div>
                 <dt>Valor registrado</dt>

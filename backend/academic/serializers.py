@@ -1,6 +1,7 @@
 from rest_framework import serializers
+from core.models import Instructor
 
-from .models import Lesson
+from .models import Lesson, TrialParticipation
 
 
 class LessonSerializer(serializers.ModelSerializer):
@@ -13,8 +14,9 @@ class LessonSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "class_group", "class_name", "date", "assigned_instructor",
             "instructor_name", "status", "notes", "created_at",
+            "replacement_for", "replacement_start", "replacement_end", "replacement_reason",
         ]
-        read_only_fields = ["id", "name", "class_name", "instructor_name", "created_at"]
+        read_only_fields = ["id", "name", "class_name", "instructor_name", "created_at", "replacement_for", "replacement_start", "replacement_end", "replacement_reason"]
         # UniqueConstraint is enforced inside the locked transaction too.
         validators = []
 
@@ -29,6 +31,42 @@ class LessonSerializer(serializers.ModelSerializer):
         if value == Lesson.Status.COMPLETED:
             raise serializers.ValidationError("A aula só pode ser realizada pela confirmação atômica da chamada.")
         return value
+
+
+class ReplacementSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+    instructor = serializers.PrimaryKeyRelatedField(queryset=Instructor.objects.all())
+    reason = serializers.CharField(max_length=2000, allow_blank=False)
+
+    def validate(self, attrs):
+        if attrs['start_time'] >= attrs['end_time']:
+            raise serializers.ValidationError({'end_time': 'O término deve ser posterior ao início.'})
+        return attrs
+
+
+class TrialSerializer(serializers.ModelSerializer):
+    person_name = serializers.CharField(source='person.name', read_only=True)
+
+    class Meta:
+        model = TrialParticipation
+        fields = ['id', 'person', 'person_name', 'modality', 'lesson', 'guardian_authorization', 'status', 'present', 'actor', 'created_at']
+        read_only_fields = ['id', 'person_name', 'modality', 'status', 'present', 'actor', 'created_at']
+        validators = []
+
+
+class TrialMarkSerializer(serializers.Serializer):
+    present = serializers.BooleanField()
+
+    def to_internal_value(self, data):
+        if not isinstance(data, dict) or type(data.get('present')) is not bool:
+            raise serializers.ValidationError({'present': 'Informe presença como true ou false.'})
+        return super().to_internal_value(data)
+
+
+class TrialCorrectionSerializer(TrialMarkSerializer):
+    reason = serializers.CharField(max_length=2000, allow_blank=False)
 
 
 class AttendanceMarkSerializer(serializers.Serializer):

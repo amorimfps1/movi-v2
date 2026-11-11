@@ -4,7 +4,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from .audit import record
 from .models import Instructor, Lead, OperationLock, Person, User
 from .permissions import is_administrative
-from .policies import DecisionRequired, approved
+from .policies import DecisionRequired
 
 
 def lock_admin(actor, target_user_id=None):
@@ -51,8 +51,14 @@ def bind_instructor(user, instructor_id=None):
 @transaction.atomic
 def change_access(actor, target_id, operation, data):
     actor, target = lock_admin(actor, target_id)
-    before = {"roles": list(target.roles), "access_status": target.access_status}
+    if "coordinator" not in actor.roles:
+        raise PermissionDenied("Somente a Coordenação pode alterar autorizações de acesso.")
+    if operation in {'reject', 'reopen', 'deactivate', 'add_role', 'remove_role'} and (not isinstance(data.get('reason'), str) or not data['reason'].strip()):
+        raise ValidationError({'reason': 'Informe a justificativa da alteração.'})
+    before = {"roles": list(target.roles), "access_status": target.access_status, "is_active": target.is_active}
     if operation == "approve":
+        if not target.is_active:
+            raise ValidationError("Uma conta desativada não pode ser aprovada.")
         if target.access_status != "pending":
             raise DecisionRequired("A solicitação já foi decidida. Use a atribuição distinta de função quando autorizada.", ["DN-002"])
         roles = data["roles"]
@@ -61,7 +67,17 @@ def change_access(actor, target_id, operation, data):
         target.roles, target.access_status = roles, "approved"
     elif operation == "reject":
         target.roles, target.access_status = [], "rejected"
+    elif operation == "reopen":
+        if target.access_status != "rejected" or not target.is_active:
+            raise ValidationError("Somente solicitações rejeitadas de contas ativas podem ser reabertas.")
+        target.roles, target.access_status = [], "pending"
+    elif operation == "deactivate":
+        if not target.is_active:
+            raise ValidationError("Esta conta já está desativada.")
+        target.is_active = False
     elif operation == "add_role":
+        if target.access_status != "approved" or not target.is_active:
+            raise ValidationError("A conta precisa estar ativa e aprovada para receber funções.")
         if data["role"] == "instructor":
             bind_instructor(target, data.get("instructor_id"))
         target.roles = sorted(set(target.roles) | {data["role"]})
@@ -74,8 +90,8 @@ def change_access(actor, target_id, operation, data):
             target.access_status = "pending"
     else:
         raise ValueError("Operação de acesso desconhecida.")
-    target.save(update_fields=["roles", "access_status"])
-    record(actor, f"access.{operation}", target, reason=data.get("reason", ""), metadata={"before": before, "after": {"roles": target.roles, "access_status": target.access_status}})
+    target.save(update_fields=["roles", "access_status", "is_active"])
+    record(actor, f"access.{operation}", target, reason=data.get("reason", ""), metadata={"before": before, "after": {"roles": target.roles, "access_status": target.access_status, "is_active": target.is_active}})
     return target
 
 
@@ -90,12 +106,11 @@ def convert_lead(actor, lead_id, data):
         if data.get("student_id") not in (None, lead.student_id):
             raise ValidationError({"student_id": "Este interessado já foi convertido para outro aluno."})
         return lead, False
-    if not approved("RN-016"):
-        raise DecisionRequired("A conversão com vínculo preservado requer aprovação da RN-016 e definição da identidade do aluno.", ["RN-016", "DN-003"])
     cpf_ids = set(Person.objects.filter(cpf=lead.cpf).values_list("id", flat=True)) if lead.cpf else set()
     email_ids = set(Person.objects.filter(email__iexact=lead.email).values_list("id", flat=True)) if lead.email else set()
     candidate_ids = cpf_ids | email_ids
-    conflict = len(candidate_ids) > 1
+    cpf_conflict = bool(lead.cpf and Person.objects.filter(pk__in=email_ids).exclude(cpf__in=["", lead.cpf]).exists())
+    conflict = len(candidate_ids) > 1 or cpf_conflict
     selected_id = data.get("student_id")
     if conflict and selected_id is None:
         raise DecisionRequired("CPF ou e-mail correspondem a mais de um aluno. Confira os cadastros e informe student_id e reason para resolver a identidade.", ["RN-015", "DN-003"])

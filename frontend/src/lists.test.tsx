@@ -80,6 +80,10 @@ function show(path: string, children: ReactNode) {
 function setupFetch(empty = false) {
   const fetcher = vi.fn((path: string) => {
     const url = new URL(path, "http://localhost");
+    if (url.pathname === "/api/reports/occupancy/") return Promise.resolve(new Response(JSON.stringify({ on: "2026-11-11", definition: "", classes: [] })));
+    if (url.pathname === "/api/reports/frequency/") return Promise.resolve(new Response(JSON.stringify({ on: "2026-11-11", definition: "", short_days: 30, long_days: 90, absence_threshold: 3, enrollments: [] })));
+    if (url.pathname === "/api/reports/conversion/") return Promise.resolve(new Response(JSON.stringify({ start: "2026-09-01", end: "2026-09-30", leads: 0, converted_people: 0, converted_enrollments: 0, person_percent: null, enrollment_percent: null, definition: "" })));
+    if (url.pathname === "/api/reports/attrition/") return Promise.resolve(new Response(JSON.stringify({ start: "2026-09-01", end: "2026-09-30", active_at_start: 0, early_cancellations: 0, normal_completions: 0, unknown_end: 0, unknown_cancellation: 0, percent: null, definition: "" })));
     const payload =
       url.pathname === "/api/reports/summary/"
         ? {

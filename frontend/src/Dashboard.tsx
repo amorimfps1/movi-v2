@@ -193,7 +193,7 @@ export function Dashboard() {
             <section className="operation-note">
               <p className="eyebrow">CUIDADOS DA SECRETARIA</p>
               <h2>O que pede atenção</h2>
-              <Link
+              {user?.roles.includes("coordinator") && <Link
                 to="/acessos?access_status=pending"
                 className="pending-link"
               >
@@ -209,7 +209,7 @@ export function Dashboard() {
                   </p>
                 </div>
                 <ArrowUpRight size={18} />
-              </Link>
+              </Link>}
               <Link to="/financeiro" className="pending-link">
                 <span className="pending-icon">
                   <ClipboardList size={19} />
@@ -226,15 +226,14 @@ export function Dashboard() {
             <span className="eyebrow">REGRAS INSTITUCIONAIS</span>
             <h3>Decisões que orientam a operação</h3>
             <p>
-              Algumas rotinas aguardam definições da instituição. Cada
-              impedimento informa a decisão necessária.
+              As decisões foram aprovadas; algumas rotinas ainda estão em implementação.
             </p>
             {policies.error ? (
               <ErrorNotice error={policies.error} />
             ) : (
               <Link to="/politicas" className="text-link">
                 {policies.data
-                  ? `${policies.data.pending.length} decisões pendentes`
+                  ? `${policies.data.pending.length} itens em acompanhamento`
                   : "Consultar decisões"}
                 <ArrowUpRight size={17} />
               </Link>

@@ -24,6 +24,8 @@ import { date, money, label } from "./format";
 import { useAuth, isAdmin } from "./auth";
 import { EcoWorkActions } from "./EcoWorkActions";
 import { PersonOverview } from "./PersonOverview";
+import { WaitingList } from "./WaitingList";
+import { ContactPreferences } from "./ContactPreferences";
 export function RecordDetail({ spec }: { spec: ResourceSpec }) {
   const { id } = useParams();
   return <RecordDetails key={`${spec.endpoint}${id}`} spec={spec} id={id!} />;
@@ -118,7 +120,7 @@ function RecordDetails({ spec, id }: { spec: ResourceSpec; id: string }) {
         }
       />
       {success && <Notice tone="success">{success}</Notice>}
-      {spec.endpoint === "leads/" && <Journey step={row.student ? 1 : 0} />}
+      {spec.endpoint === "leads/" && admin && <Journey step={row.student ? 1 : 0} />}
       <div className="detail-grid">
         <section className="sheet">
           <div className="section-heading">
@@ -150,7 +152,7 @@ function RecordDetails({ spec, id }: { spec: ResourceSpec; id: string }) {
         <div>
           {spec.endpoint === "people/" && <PersonOverview id={id} />}
           <EcoWorkActions endpoint={spec.endpoint} row={row} />
-          {spec.endpoint === "leads/" && (
+          {spec.endpoint === "leads/" && admin && (
             <section className="sheet">
               <div className="section-heading">
                 <h2>Próximo passo</h2>
@@ -271,9 +273,9 @@ function RecordDetails({ spec, id }: { spec: ResourceSpec; id: string }) {
                 A função de instrutor exige vínculo inequívoco entre a conta e
                 este cadastro profissional.
               </p>
-              <Link className="button button--secondary" to="/acessos">
+              {user?.roles.includes("coordinator") && <Link className="button button--secondary" to="/acessos">
                 Gerir contas e perfis <ArrowUpRight size={17} />
-              </Link>
+              </Link>}
             </section>
           )}
         </div>
@@ -291,6 +293,8 @@ function RecordDetails({ spec, id }: { spec: ResourceSpec; id: string }) {
       {converting && (
         <LeadConversion lead={row} onClose={() => setConverting(false)} />
       )}
+      {spec.endpoint === "classes/" && admin && <WaitingList groupId={id} />}
+      {admin && (spec.endpoint === "people/" || spec.endpoint === "leads/") && <ContactPreferences kind={spec.endpoint === "people/" ? "person" : "lead"} id={id} />}
     </>
   );
 }
@@ -306,8 +310,8 @@ function LeadConversion({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>();
   const options = useQuery({
-    queryKey: ["options", "students/"],
-    queryFn: () => optionsFor("students/"),
+    queryKey: ["options", "people/"],
+    queryFn: () => optionsFor("people/"),
     retry: false,
   });
   const navigate = useNavigate();
@@ -330,7 +334,7 @@ function LeadConversion({
             );
             await client.invalidateQueries();
             onClose();
-            if (result.student) navigate(`/alunos/${result.student}`);
+            if (result.student) navigate(`/pessoas/${result.student}`);
           } catch (err) {
             setError(err);
           } finally {
@@ -349,7 +353,7 @@ function LeadConversion({
           <ErrorNotice error={options.error} />
         ) : (
           <div className="form-grid">
-            <Field label="Identificação do aluno" wide>
+            <Field label="Cadastro de pessoa" wide>
               <select
                 value={student}
                 onChange={(event) => setStudent(event.target.value)}
@@ -357,7 +361,7 @@ function LeadConversion({
                 <option value="">
                   Verificar correspondência automaticamente
                 </option>
-                {options.data?.map((row) => (
+                {options.data?.filter((row) => !row.archived).map((row) => (
                   <option key={Number(row.id)} value={Number(row.id)}>
                     {String(row.name)} ·{" "}
                     {String(row.cpf || row.email || `#${row.id}`)}
@@ -369,7 +373,7 @@ function LeadConversion({
               <Field
                 label="Justificativa da identidade selecionada"
                 wide
-                hint="A resolução é registrada e pode depender de aprovação institucional."
+                hint="Registre como a identidade foi conferida. A justificativa fica no histórico."
               >
                 <textarea
                   value={reason}

@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from threading import Barrier
 from unittest import skipUnless
 from unittest.mock import patch
@@ -6,6 +7,7 @@ from unittest.mock import patch
 from django.apps import apps
 from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
 
 from core.models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Person, User
@@ -73,6 +75,25 @@ class AuthenticationTests(CoreFixtures):
 
 
 class AccessTests(CoreFixtures):
+    def test_coordinator_reopens_and_deactivates_with_audit(self):
+        url = f"/api/users/{self.pending.pk}/"
+        self.assertEqual(self.client.post(url + "reject/", {"reason": "Análise"}, format="json").status_code, 200)
+        self.assertEqual(self.client.post(url + "reopen/", {"reason": "Revisão"}, format="json").status_code, 200)
+        self.assertEqual(self.client.post(url + "approve/", {"roles": ["secretary"]}, format="json").status_code, 200)
+        holder = APIClient()
+        holder.force_login(User.objects.get(pk=self.pending.pk))
+        self.assertEqual(self.client.post(url + "deactivate/", {"reason": "Desligamento"}, format="json").status_code, 200)
+        self.assertEqual(holder.get("/api/students/").status_code, 403)
+        self.assertEqual(self.client.post(url + "add-role/", {"role": "communication", "reason": "Nova função"}, format="json").status_code, 400)
+        self.assertTrue(AuditEvent.objects.filter(action="access.deactivate", reason="Desligamento").exists())
+
+    def test_secretary_cannot_change_access(self):
+        secretary = User.objects.create_user(email="secretary@example.com", password=PASSWORD, access_status="approved", roles=["secretary"])
+        self.client.force_authenticate(secretary)
+        self.assertEqual(self.client.get('/api/users/').status_code, 403)
+        response = self.client.post(f"/api/users/{self.pending.pk}/approve/", {"roles": ["secretary"]}, format="json")
+        self.assertEqual(response.status_code, 403)
+
     def test_pending_rejected_and_roleless_accounts_blocked(self):
         for state, roles in [("pending", []), ("rejected", ["coordinator"]), ("approved", [])]:
             self.pending.access_status, self.pending.roles = state, roles
@@ -87,10 +108,10 @@ class AccessTests(CoreFixtures):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["roles"], ["secretary"])
         self.assertEqual(self.client.post(url + "approve/", {"roles": ["coordinator"]}, format="json").status_code, 409)
-        self.assertEqual(self.client.post(url + "add-role/", {"role": "communication"}, format="json").status_code, 200)
-        self.assertEqual(self.client.post(url + "remove-role/", {"role": "communication"}, format="json").status_code, 200)
+        self.assertEqual(self.client.post(url + "add-role/", {"role": "communication", "reason": "Nova função"}, format="json").status_code, 200)
+        self.assertEqual(self.client.post(url + "remove-role/", {"role": "communication", "reason": "Mudança de função"}, format="json").status_code, 200)
         stale = User.objects.get(pk=self.pending.pk)
-        response = self.client.post(url + "remove-role/", {"role": "secretary"}, format="json")
+        response = self.client.post(url + "remove-role/", {"role": "secretary", "reason": "Mudança de função"}, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["access_status"], "pending")
         self.client.force_authenticate(stale)
@@ -98,7 +119,7 @@ class AccessTests(CoreFixtures):
         self.assertEqual(AuditEvent.objects.filter(action="access.remove_role", target_id=str(self.pending.pk)).count(), 2)
 
     def test_self_mutation_refused(self):
-        response = self.client.post(f"/api/users/{self.admin.pk}/remove-role/", {"role": "coordinator"}, format="json")
+        response = self.client.post(f"/api/users/{self.admin.pk}/remove-role/", {"role": "coordinator", "reason": "Tentativa"}, format="json")
         self.assertEqual(response.status_code, 403)
         self.admin.refresh_from_db()
         self.assertEqual(self.admin.roles, ["coordinator"])
@@ -134,10 +155,47 @@ class AccessTests(CoreFixtures):
         self.assertEqual(self.pending.access_status, "pending")
         self.assertEqual(self.pending.roles, [])
 
-    def test_communication_cannot_manage_leads_or_students(self):
+    def test_communication_reads_only_limited_lead_contacts(self):
+        lead = Lead.objects.create(name='Contato', cpf='52998224725', email='contact@example.test', notes='Privado')
         self.client.force_authenticate(self.communication)
-        for resource in ("leads", "students", "users", "instructors", "audit", "modalities", "classes"):
+        response = self.client.get(f'/api/leads/{lead.pk}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('cpf', response.data)
+        self.assertNotIn('notes', response.data)
+        self.assertNotIn('student', response.data)
+        self.assertEqual(self.client.get('/api/leads/?search=52998224725').data['count'], 0)
+        self.assertEqual(self.client.patch(f'/api/leads/{lead.pk}/', {'name': 'Novo'}, format='json').status_code, 403)
+        for resource in ("students", "users", "instructors", "audit", "modalities", "classes"):
             self.assertEqual(self.client.get(f"/api/{resource}/").status_code, 403, resource)
+
+    def test_contact_preferences_control_communication_channels(self):
+        lead = Lead.objects.create(name='Contato', email='contact@example.test', phone='11999999999')
+        url = '/api/contact-preferences/'
+        self.assertEqual(self.client.post(url, {'lead': lead.pk, 'channel': 'email', 'purpose': 'commercial', 'allowed': True}, format='json').status_code, 201)
+        self.assertEqual(self.client.post(url, {'lead': lead.pk, 'channel': 'phone', 'purpose': 'administrative', 'allowed': True}, format='json').status_code, 201)
+        self.client.force_authenticate(self.communication)
+        data = self.client.get(f'/api/leads/{lead.pk}/').data
+        self.assertEqual(data['email'], 'contact@example.test')
+        self.assertEqual(data['phone'], '')
+        self.assertEqual(data['whatsapp'], '')
+        self.assertEqual(self.client.get('/api/leads/?search=contact@example.test').data['count'], 0)
+        self.assertEqual(self.client.post(url, {'lead': lead.pk, 'channel': 'whatsapp', 'purpose': 'commercial', 'allowed': True}, format='json').status_code, 403)
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.post(url, {'lead': lead.pk, 'channel': 'email', 'purpose': 'commercial', 'allowed': False}, format='json').status_code, 201)
+        self.client.force_authenticate(self.communication)
+        self.assertEqual(self.client.get(f'/api/leads/{lead.pk}/').data['email'], '')
+        self.assertTrue(AuditEvent.objects.filter(action='contact.preference').exists())
+
+    def test_retention_review_lists_stale_lead_and_records_review(self):
+        lead = Lead.objects.create(name='Lead antigo')
+        Lead.objects.filter(pk=lead.pk).update(created_at=timezone.now() - timedelta(days=400))
+        listed = self.client.get('/api/leads/retention-review/')
+        self.assertEqual([item['id'] for item in listed.data['results']], [lead.pk])
+        self.assertEqual(self.client.post(f'/api/leads/{lead.pk}/review-retention/', {'reason': 'Contato revisado'}, format='json').status_code, 200)
+        self.assertEqual(self.client.get('/api/leads/retention-review/').data['results'], [])
+        self.assertTrue(AuditEvent.objects.filter(action='lead.retention.review', reason='Contato revisado').exists())
+        self.client.force_authenticate(self.communication)
+        self.assertEqual(self.client.get('/api/leads/retention-review/').status_code, 403)
 
 
 class StudentTests(CoreFixtures):
@@ -151,9 +209,9 @@ class StudentTests(CoreFixtures):
         self.assertEqual(self.client.post("/api/students/", {"name": " "}, format="json").status_code, 400)
 
     @override_settings(BUSINESS_APPROVALS=[])
-    def test_duplicate_proposal_not_assumed_approved(self):
+    def test_approved_cpf_rule_applies_without_environment_override(self):
         Person.objects.create(name="Original", cpf="52998224725")
-        self.assertEqual(self.client.post("/api/students/", {"name": "Outro", "cpf": "529.982.247-25"}, format="json").status_code, 201)
+        self.assertEqual(self.client.post("/api/students/", {"name": "Outro", "cpf": "529.982.247-25"}, format="json").status_code, 400)
 
     @override_settings(BUSINESS_APPROVALS=["RN-013"])
     def test_approved_duplicate_rule_blocks_equivalent_cpfs(self):
@@ -163,15 +221,11 @@ class StudentTests(CoreFixtures):
         self.assertEqual(Person.objects.count(), 1)
         self.assertEqual(self.client.patch(f"/api/students/{original.pk}/", {"cpf": "529.982.247-25"}, format="json").status_code, 200)
 
-    def test_delete_absent_and_archiving_pending_approval(self):
+    def test_delete_absent_and_archiving_preserves_record(self):
         student = Person.objects.create(name="Histórico")
         url = f"/api/students/{student.pk}/"
         self.assertEqual(self.client.delete(url).status_code, 405)
-        response = self.client.patch(url, {"archived": True}, format="json")
-        self.assertEqual(response.status_code, 409)
-        self.assertIn("RN-019", response.data["decisions"])
-        with override_settings(BUSINESS_APPROVALS=["RN-019"]):
-            self.assertEqual(self.client.patch(url, {"archived": True}, format="json").status_code, 200)
+        self.assertEqual(self.client.patch(url, {"archived": True}, format="json").status_code, 200)
         student.refresh_from_db()
         self.assertTrue(student.archived)
         self.assertTrue(AuditEvent.objects.filter(action="student.update", target_id=str(student.pk)).exists())
@@ -193,11 +247,17 @@ class ConversionTests(CoreFixtures):
         self.url = f"/api/leads/{self.lead.pk}/convert/"
 
     @override_settings(BUSINESS_APPROVALS=[])
-    def test_conversion_waits_for_link_proposal(self):
+    def test_approved_conversion_works_without_environment_override(self):
         response = self.client.post(self.url, {}, format="json")
-        self.assertEqual(response.status_code, 409)
-        self.assertIn("RN-016", response.data["decisions"])
-        self.assertEqual(Person.objects.count(), 0)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Person.objects.count(), 1)
+
+    def test_email_match_with_different_cpf_requires_resolution(self):
+        person = Person.objects.create(name="Familiar", cpf="11144477735", email=self.lead.email)
+        self.assertEqual(self.client.post(self.url, {}, format="json").status_code, 409)
+        response = self.client.post(self.url, {"student_id": person.pk, "reason": "Identidade conferida"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["student"], person.pk)
 
     @override_settings(BUSINESS_APPROVALS=["RN-016"])
     def test_conversion_is_idempotent_does_not_enroll_and_preserves_history(self):
@@ -256,6 +316,25 @@ class ConversionTests(CoreFixtures):
 
 
 class ClassScopeTests(CoreFixtures):
+    def test_schedule_rejects_room_and_instructor_conflicts_and_missing_specialty(self):
+        payload = {'name': 'Nova', 'modality': self.modality.pk, 'instructor': self.other_instructor.pk,
+                   'weekdays': [0], 'start_time': '09:30', 'end_time': '10:30', 'room': 'Sala 1', 'capacity': 10}
+        self.assertEqual(self.client.post('/api/classes/', payload, format='json').status_code, 400)
+        self.other_instructor.specialties.add(self.modality)
+        response = self.client.post('/api/classes/', payload, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('room', response.data)
+        self.instructor.specialties.add(self.modality)
+        payload.update(instructor=self.instructor.pk, room='Outra sala')
+        response = self.client.post('/api/classes/', payload, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('instructor', response.data)
+
+    def test_cannot_remove_specialty_from_active_class(self):
+        self.instructor.specialties.add(self.modality)
+        response = self.client.patch(f'/api/instructors/{self.instructor.pk}/', {'specialties': []}, format='json')
+        self.assertEqual(response.status_code, 400)
+
     def test_instructor_only_sees_own_classes_and_cannot_reassign(self):
         self.client.force_authenticate(self.instructor_user)
         response = self.client.get("/api/classes/")

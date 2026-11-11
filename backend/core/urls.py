@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AuditViewSet, ClassGroupViewSet, CsrfView, InstructorViewSet, LeadViewSet, LoginView,
-    LogoutView, MeView, ModalityViewSet, RegisterView, PersonViewSet, UserViewSet,
+    LogoutView, MeView, ModalityViewSet, RegisterView, PersonViewSet, UserViewSet, ContactPreferenceViewSet,
 )
 
 router = DefaultRouter()
@@ -11,6 +11,7 @@ router.register("users", UserViewSet, basename="user")
 router.register("students", PersonViewSet, basename="student")
 router.register("people", PersonViewSet, basename="person")
 router.register("leads", LeadViewSet, basename="lead")
+router.register("contact-preferences", ContactPreferenceViewSet, basename="contact-preference")
 router.register("modalities", ModalityViewSet, basename="modality")
 router.register("instructors", InstructorViewSet, basename="instructor")
 router.register("classes", ClassGroupViewSet, basename="class")

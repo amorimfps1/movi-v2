@@ -6,7 +6,45 @@ from django.db.models import Q
 from django.utils import timezone
 
 
+class FinancialCatalogVersion(models.Model):
+    """Versioned catalog storage; publication rules belong to the service layer."""
+
+    class Status(models.TextChoices):
+        DRAFT = 'draft', 'Rascunho'
+        PUBLISHED = 'published', 'Publicado'
+
+    version = models.PositiveIntegerField(unique=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
+    effective_from = models.DateField()
+    effective_until = models.DateField(null=True, blank=True)
+    configuration = models.JSONField(default=dict)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-version']
+        constraints = [
+            models.CheckConstraint(condition=Q(effective_until__isnull=True) | Q(effective_until__gte=models.F('effective_from')), name='financial_catalog_valid_period'),
+            models.CheckConstraint(condition=Q(status='draft', published_by__isnull=True, published_at__isnull=True) | Q(status='published', published_by__isnull=False, published_at__isnull=False), name='financial_catalog_publish_metadata'),
+        ]
+
+
+class FrequencyPolicy(models.Model):
+    short_days = models.PositiveSmallIntegerField(default=30)
+    long_days = models.PositiveSmallIntegerField(default=90)
+    absence_threshold = models.PositiveSmallIntegerField(default=3)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(short_days__gte=1, long_days__gte=models.F('short_days'), long_days__lte=3650, absence_threshold__gte=1, absence_threshold__lte=100), name='frequency_policy_valid')]
+
+
 class Enrollment(models.Model):
+    financial_catalog = models.ForeignKey(FinancialCatalogVersion, null=True, blank=True, on_delete=models.PROTECT, related_name='enrollments', editable=False)
+    source_lead = models.ForeignKey('core.Lead', null=True, blank=True, on_delete=models.PROTECT, related_name='origin_enrollments')
     contract_version = models.PositiveSmallIntegerField(default=0, editable=False)
     end_date = models.DateField(null=True, blank=True, editable=False)
     associated = models.BooleanField(default=False)
@@ -18,9 +56,10 @@ class Enrollment(models.Model):
     student = models.ForeignKey('core.Person', on_delete=models.PROTECT, related_name='enrollments')
     class_group = models.ForeignKey('core.ClassGroup', on_delete=models.PROTECT, related_name='enrollments')
     start_date = models.DateField()
-    plan = models.CharField(max_length=12, choices=[('monthly', 'Mensal'), ('quarterly', 'Trimestral'), ('yearly', 'Anual')])
+    plan = models.CharField(max_length=40)
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
     administrative_status = models.CharField(max_length=12, default='regular', choices=[('regular', 'Regular'), ('cancelled', 'Cancelada')])
+    cancelled_on = models.DateField(null=True, blank=True, editable=False)
     kind = models.CharField(max_length=10, default='regular', choices=[('regular', 'Comum'), ('trial', 'Experimental')])
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -33,10 +72,39 @@ class CommercialCondition(models.Model):
     enrollment = models.ForeignKey(Enrollment, on_delete=models.PROTECT, related_name='conditions')
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     effective_on = models.DateField()
-    plan = models.CharField(max_length=12)
+    plan = models.CharField(max_length=40)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class EnrollmentSuspension(models.Model):
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.PROTECT, related_name='suspensions')
+    starts_on = models.DateField()
+    ends_on = models.DateField()
+    reason = models.TextField()
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-starts_on', '-id']
+        constraints = [models.CheckConstraint(condition=Q(ends_on__gte=models.F('starts_on')), name='suspension_valid_period')]
+
+
+class WaitingListEntry(models.Model):
+    class_group = models.ForeignKey('core.ClassGroup', on_delete=models.PROTECT, related_name='waiting_list')
+    person = models.ForeignKey('core.Person', on_delete=models.PROTECT, related_name='waiting_list')
+    status = models.CharField(max_length=12, choices=[('waiting', 'Aguardando'), ('cancelled', 'Cancelada'), ('enrolled', 'Matriculada')], default='waiting')
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    enrollment = models.OneToOneField(Enrollment, null=True, blank=True, on_delete=models.PROTECT, related_name='waiting_entry')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+        constraints = [
+            models.UniqueConstraint(fields=['class_group', 'person'], condition=Q(status='waiting'), name='waiting_person_class_active_unique'),
+            models.CheckConstraint(condition=(Q(status='enrolled', enrollment__isnull=False) | Q(status__in=['waiting', 'cancelled'], enrollment__isnull=True)), name='waiting_enrollment_consistent'),
+        ]
 
 
 class Charge(models.Model):
@@ -49,6 +117,9 @@ class Charge(models.Model):
     # Identity technical key; does not schedule or invent recurring obligations.
     idempotency_key = models.CharField(max_length=120, unique=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    cancelled_on = models.DateField(null=True, blank=True, editable=False)
+    cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    cancellation_reason = models.TextField(blank=True, editable=False)
 
     class Meta:
         ordering = ['due_date', 'id']
@@ -67,12 +138,15 @@ class Charge(models.Model):
 
     @property
     def status(self):
+        if self.cancelled_on and self.cancelled_on <= timezone.localdate():
+            return 'cancelled'
         if self.is_paid:
             return 'paid'
         return 'overdue' if self.due_date < timezone.localdate() else 'open'
 
 
 class Payment(models.Model):
+    request_key = models.UUIDField(null=True, blank=True, unique=True, editable=False)
     charge = models.ForeignKey(Charge, on_delete=models.PROTECT, related_name='payments')
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
     paid_on = models.DateField()
@@ -85,7 +159,6 @@ class Payment(models.Model):
         ordering = ['-paid_on', '-id']
         constraints = [
             models.CheckConstraint(condition=Q(amount__gt=0), name='payment_positive_amount'),
-            models.UniqueConstraint(fields=['charge'], name='one_full_settlement_per_charge'),
         ]
 
 

@@ -95,6 +95,8 @@ export const enrollmentFields: FieldSpec[] = [
     required: true,
     wide: true,
   },
+  { key: "source_lead", label: "Lead de origem (opcional)", type: "select", lookup: "leads/?status=converted", nullable: true, wide: true,
+    hint: "Selecione somente se este lead deu origem à contratação e estiver vinculado à pessoa escolhida." },
   {
     key: "start_date",
     label: "Início",
@@ -109,15 +111,18 @@ export const enrollmentFields: FieldSpec[] = [
     required: true,
     default: "quarterly",
     options: [
+      { value: "monthly", label: "Mensal" },
       { value: "quarterly", label: "Trimestral" },
       { value: "yearly", label: "Anual" },
     ],
   },
   { key: "associated", label: "Associado", type: "check", default: false },
   { key: "payment_method", label: "Meio de pagamento contratado", type: "select", default: "card", required: true,
-    options: [{ value: "card", label: "Cartão · tabela 2026" }, { value: "boleto", label: "Boleto · preço pendente" }] },
-  { key: "installments", label: "Número de parcelas", type: "number", min: 1, max: 12, default: 3, required: true,
-    hint: "Trimestral: 1, 2 ou 3. Anual: 3, 6, 10 ou 12. Total calculado pela categoria configurada na modalidade; taxa separada." },
+    options: [{ value: "card", label: "Cartão" }, { value: "boleto", label: "Boleto" }] },
+  { key: "installments", label: "Número de parcelas", type: "number", min: 1, max: 120, default: 3, required: true,
+    hint: "O plano, o parcelamento e o preço precisam constar da tabela vigente para a modalidade." },
+  { key: "capacity_exception_reason", label: "Justificativa de exceção de lotação", type: "textarea", wide: true,
+    hint: "Somente Coordenação pode autorizar a exceção, dentro do limite físico cadastrado para a turma." },
   {
     key: "kind",
     label: "Tipo",
@@ -126,7 +131,6 @@ export const enrollmentFields: FieldSpec[] = [
     required: true,
     options: [
       { value: "regular", label: "Regular" },
-      { value: "trial", label: "Experimental · requer DN-013" },
     ],
   },
 ];
@@ -149,7 +153,7 @@ export const enrollmentSpec: ResourceSpec = {
       label: "Início",
       render: (row) => date(row.start_date),
     },
-    { key: "plan", label: "Plano", render: (row) => label(row.plan) },
+    { key: "plan", label: "Plano", render: (row) => String(row.plan_name || label(row.plan)) },
     { key: "amount", label: "Valor", render: (row) => money(row.amount) },
     {
       key: "eligibility",
@@ -277,8 +281,8 @@ export const modalitySpec: ResourceSpec = {
   fields: [
     { key: "name", label: "Nome da modalidade", required: true, wide: true },
     { key: "area", label: "Área" },
-    { key: "price_category", label: "Categoria de preços 2026", type: "select", nullable: true,
-      options: Array.from({length: 7}, (_, i) => ({value: i + 1, label: `Atividade ${i + 1}${i === 6 ? ' · Karatê: pendente' : ''}`})),
+    { key: "price_category", label: "Categoria de preços", type: "select", nullable: true,
+      options: Array.from({length: 7}, (_, i) => ({value: i + 1, label: `Atividade ${i + 1}`})),
       hint: "Selecione somente após conferir o vínculo da modalidade com a tabela." },
     { key: "enrollment_fee_kind", label: "Taxa de matrícula", type: "select",
       options: [{value: 'standard', label: 'Demais modalidades'}, {value: 'rhythmic', label: 'Ginástica Rítmica'}] },
@@ -410,12 +414,14 @@ export const classSpec: ResourceSpec = {
       required: true,
       min: 1,
     },
+    { key: "physical_capacity", label: "Limite físico de segurança", type: "number", min: 1, nullable: true,
+      hint: "Opcional. Necessário para autorizar exceções acima da capacidade regular." },
     { key: "active", label: "Turma ativa", type: "check", default: true },
     {
       key: "allows_trial",
       label: "Permitir experimental",
       type: "check",
-      hint: "A criação de matrícula experimental aguarda DN-013.",
+      hint: "Permite agendar uma participação experimental nas aulas desta turma.",
     },
   ],
   columns: [

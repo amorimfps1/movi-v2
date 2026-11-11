@@ -11,6 +11,7 @@ it("mantém o contrato escolhido ao trocar turma e não usa o preço legado como
   vi.stubGlobal(
     "fetch",
     vi.fn().mockImplementation((path: string) => {
+      if (path.includes('financial-options/')) return Promise.resolve(new Response(JSON.stringify({ plans: [{ code: 'quarterly', name: 'Trimestral', installments: [1, 2, 3] }, { code: 'yearly', name: 'Anual', installments: [3, 6, 10, 12] }, { code: 'p_custom', name: 'Plano personalizado', installments: [6] }], methods: ['card'] })));
       const rows = path.includes("classes/")
         ? [
             { id: 1, name: "Turma de teste A", modality: 11 },
@@ -52,6 +53,7 @@ it("mantém o contrato escolhido ao trocar turma e não usa o preço legado como
     </QueryClientProvider>,
   );
   await screen.findByLabelText("Turma");
+  expect(screen.getByRole('option', { name: 'Plano personalizado' })).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Turma"), { target: { value: "1" } });
   expect(screen.queryByLabelText("Valor contratado (R$)")).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Plano"), { target: { value: "yearly" } });

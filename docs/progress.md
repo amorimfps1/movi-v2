@@ -1,5 +1,55 @@
 # Progresso e ponto de retomada — MOVI+
 
+## Continuação — tabelas financeiras e recebimentos acadêmicos
+
+Catálogos acadêmicos podem ser editados pela Coordenação, conferidos e publicados com justificativa; publicação valida estrutura, vigência e revisão da prévia. Novas matrículas consultam a tabela publicada aplicável e guardam sua referência; condições e cobranças antigas são preservadas. Enquanto não houver tabela publicada, a tabela original de 2026 permanece como compatibilidade transitória; após a primeira publicação, datas sem tabela são recusadas. Bolsas e regras EcoWork ainda não são parametrizadas por essa tela.
+
+Continuação: a tabela também permite escolher primeiro vencimento (dia 15/fim do mês, início ou dia fixo) e referência das parcelas seguintes. Dias inexistentes são ajustados sem perder o dia fixo original. Bolsas e regras EcoWork continuam pendentes. A ocupação de turma é verificada nos intervalos sobrepostos antes de criar matrícula.
+
+Continuação: planos personalizados podem ser definidos em rascunho com nome, duração e parcelamentos e selecionados na matrícula conforme a tabela vigente. A migration `billing.0013` amplia os identificadores de plano e não foi aplicada ao banco operacional. Testes direcionados cobrem contratação por plano personalizado; descontos, bolsas e catálogo EcoWork continuam pendentes.
+
+Lista de espera: cadastro e retirada justificada disponíveis para Secretaria/Coordenação na ficha da turma. A matrícula respeita a ordem da fila e vincula a primeira pessoa à matrícula na mesma transação. A migration `billing.0009` ainda não foi aplicada ao banco operacional. Os testes de fila, lotação e ausência de cobrança indevida passaram em SQLite; falta validar concorrência PostgreSQL e os conflitos de agenda/exceções.
+
+Conflitos de horários de turma por sala e instrutor e especialidade são verificados nas alterações de oferta; a remoção de especialidade usada por turma ativa é recusada. Escritas de turmas e especialidades compartilham bloqueio transacional. Cinco testes direcionados em SQLite e geração/validação do OpenAPI passaram; falta validar concorrência PostgreSQL e o fluxo integrado em navegador.
+
+Exceções de lotação exigem Coordenação, justificativa e limite físico da turma cadastrado; a matrícula é recusada se ultrapassar esse limite. A migration `core.0007` ainda não foi aplicada ao banco operacional. Testes direcionados de autorização e limite passaram em SQLite; falta validação em PostgreSQL e navegador.
+
+Relatórios mostram ocupação atual por turma (matrículas regulares, capacidade, experimentais e espera separados) e frequência das matrículas regulares vigentes em 30/90 dias, com alerta de três faltas consecutivas e exclusão de aulas canceladas. Testes direcionados passaram em SQLite. Faltam parametrização de limiares/janelas, evasão, conversões por coorte, validação com volume e conferência visual.
+
+Continuação: Coordenação pode configurar as duas janelas de frequência e o limite de faltas, com justificativa e auditoria. A conversão por coorte conta leads pela data de cadastro e distingue vínculo com pessoa de matrícula com lead de origem explicitamente informado; vínculos antigos não são inferidos. As migrations `billing.0010` e `billing.0011` não foram aplicadas ao banco operacional. Validação de volume e conferência visual continuam pendentes.
+
+Evasão: cancelamentos novos registram data de efeito; a migration `billing.0012` recupera datas explícitas da auditoria quando disponíveis. O relatório separa cancelamentos antecipados, conclusões normais e registros antigos com vigência ou cancelamento desconhecidos. A migration não foi aplicada ao banco operacional. O indicador e a recuperação de datas requerem validação com dados reais em cópia e testes em PostgreSQL; cancelamento futuro ainda não está implementado.
+
+Comunicação pode consultar leads em modo de leitura com nome, contato autorizado, origem e situação, sem CPF, anotações ou vínculo ao cadastro acadêmico; pesquisa por CPF e alterações são recusadas pelo backend. Gestão de leads continua com Secretaria/Coordenação. Testes direcionados de acesso passaram em SQLite.
+
+Preferências de contato são registradas por pessoa ou lead, canal e finalidade em histórico auditável. Na visão de Comunicação, cada canal comercial só é exibido após autorização explícita e deixa de aparecer quando a última preferência revoga essa autorização; a pesquisa desse perfil usa nome, evitando pesquisa indireta de contato omitido. A migration `core.0006` não foi aplicada ao banco operacional. Retenção e revisão jurídica permanecem pendentes.
+
+Aula experimental foi implementada como participação separada: uma por pessoa/modalidade, aula agendada, turma autorizada, controle de vaga e autorização de responsável para menor com data de nascimento conhecida. Após concluir a aula, o responsável pela chamada registra presença ou falta e pode corrigir a marcação com justificativa auditada. Arquivar pessoa ou cancelar aula encerra a experimental agendada. A migration `academic.0002` ainda não foi aplicada ao banco operacional. Testes direcionados passaram em SQLite; faltam concorrência PostgreSQL e validação em navegador.
+
+Reposições são aulas novas ligadas à ocorrência original, com data, horário, instrutor, justificativa e verificação de conflitos de sala/instrutor. Alteração das referências de uma reposição exige cancelar e registrar outra. A migration `academic.0003` ainda não foi aplicada ao banco operacional. Testes direcionados e 36 testes acadêmicos anteriores passaram em SQLite (um teste PostgreSQL ignorado); falta validação em PostgreSQL e navegador.
+
+Recebimentos acadêmicos aceitam pagamentos parciais e múltiplos, mediante chave de operação, recusando excedente. Estorno e correção de recebimento continuam pendentes, assim como pagamentos parciais EcoWork. As migrations `billing.0005`, `0006` e `0007` não foram aplicadas ao banco operacional.
+
+Suspensões acadêmicas podem ser autorizadas pela Coordenação por até 30 dias, sem retroatividade, dentro da vigência, com justificativa e histórico. A participação fica bloqueada nas datas inclusivas; cobranças e vigência não são alteradas. A migration `billing.0008` ainda não foi aplicada ao banco operacional. Dois testes direcionados passaram em SQLite; a interface nova precisa ser exercitada em navegador e a concorrência em PostgreSQL.
+
+Verificações: 38 testes existentes e novos de financeiro, contratos e rascunhos passaram em SQLite; após adicionar proteção contra prévia desatualizada, mais 7 testes direcionados passaram. TypeScript aprovado. A tela nova e a concorrência em PostgreSQL ainda precisam de validação.
+
+## Configuração financeira — início
+
+Criado `FinancialCatalogVersion` e migration `billing.0005_financialcatalogversion` como estrutura inicial para versões com vigência, configuração, autoria e metadados de publicação. Ainda não há serviço/API/interface de edição e publicação, validação de conteúdo ou seleção de versão na contratação; os preços existentes continuam fixos no código. Essa estrutura ainda não implementa a parametrização financeira das DN-004–011. A migration não foi aplicada ao banco operacional. Em SQLite, os 11 testes existentes de contratos acadêmicos passaram; não verificam o novo catálogo.
+
+Continuação: API `/api/financial-catalogs/` permite à Coordenação criar e editar rascunhos versionados com auditoria e revalidação de permissão na transação. A publicação retorna erro até existirem validação de conteúdo e prévia de impacto; nenhum contrato consulta esses rascunhos. Dois testes de autorização e ciclo do rascunho passaram em SQLite. Falta a interface, validação, publicação e integração com contratos.
+
+Foi acrescentada prévia inicial que verifica estrutura de planos, preços e taxas, incluindo combinações duplicadas. A prévia ainda não calcula impacto sobre contratações nem cobre todos os parâmetros exigidos; a publicação permanece bloqueada. Três testes do catálogo passaram em SQLite. A gestão de contas foi restrita à Coordenação na API e na navegação. O arquivamento de pessoa aprovado foi habilitado sem eliminar histórico; a elegibilidade de pessoa arquivada continua indeterminada.
+
+## Identidade DN-003 — 11/11/2026
+
+Aprovação do solicitante registrada em `decisions.md`. CPF informado agora é único, com validação na API e constraint condicional na migration `core.0005_person_cpf_unique`. A migration interrompe sua aplicação se houver duplicatas, para tratamento prévio sem fusão automática. Conversão de lead está habilitada sem override e exige resolução justificada quando CPF e e-mail indicam pessoas distintas, inclusive quando o único resultado por e-mail tem CPF diferente. E-mail de pessoa continua compartilhável. Ainda é necessário aplicar a migration ao ambiente escolhido e conferir a interface de resolução de identidade.
+
+Verificação: `TEST_SQLITE=1 manage.py test core.tests.test_core --noinput`: 32 testes, 4 ignorados por exigirem PostgreSQL; `makemigrations --check --dry-run`: sem divergências. Concorrência e migração em banco operacional não foram verificadas nesta etapa.
+
+A interface de conversão consulta o cadastro central `people/`, exclui pessoas arquivadas da seleção e abre a ficha de pessoa após a conversão. O endpoint anterior `students/` também usa o cadastro central; a mudança explicita o fluxo por pessoa. TypeScript aprovado e 7 testes existentes de detalhes passaram; o fluxo novo não foi inspecionado em navegador.
+
 Este é o ponto de entrada para continuar o desenvolvimento. Requisitos e decisões estão em `requirements.md` e `decisions.md`; evidências de execução estão em `verification.md`.
 
 ## Cadastro central e consultas EcoWork — 05/11/2026

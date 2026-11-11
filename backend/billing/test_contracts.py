@@ -7,9 +7,9 @@ from rest_framework.exceptions import APIException
 
 from academic.models import Lesson, Attendance
 from academic.services import roster, submit_attendance, correct_attendance
-from core.models import AuditEvent, User
+from core.models import AuditEvent, User, Person, Lead
 from .contracts import terms, add_months
-from .models import Enrollment, Charge, Payment
+from .models import Enrollment, Charge, Payment, FinancialCatalogVersion
 from .services import evaluate_eligibility
 
 
@@ -21,6 +21,8 @@ class ContractTests(TestCase):
         modality.price_category = 1
         modality.enrollment_fee_kind = 'standard'
         modality.save()
+        self.group.capacity = 100
+        self.group.save(update_fields=['capacity'])
 
     def enroll(self, start=None, plan='quarterly', installments=3, associated=False):
         response = self.client.post('/api/enrollments/', {
@@ -35,6 +37,108 @@ class ContractTests(TestCase):
         return self.client.post(f'/api/charges/{charge.pk}/receive/', {
             'amount': str(charge.amount), 'paid_on': (on or self.today).isoformat(), 'method': 'card',
         }, format='json')
+
+    def test_published_catalog_applies_only_to_new_contracts(self):
+        previous = self.enroll(date(2026, 1, 5))
+        config = {'plans': {'quarterly': {'months': 3, 'installments': [3]}},
+                  'prices': [{'category': 1, 'plan': 'quarterly', 'method': 'card', 'associated': False, 'amount': '300.00'}],
+                  'fees': {'standard': {'associated': '0.00', 'non_associated': '0.00'}}}
+        catalog = FinancialCatalogVersion.objects.create(version=1, status='published', effective_from=date(2026, 1, 1),
+            effective_until=date(2026, 12, 31), configuration=config, created_by=self.admin,
+            published_by=self.admin, published_at=timezone.now())
+        new = self.enroll(date(2026, 2, 5))
+        self.assertEqual(new.financial_catalog_id, catalog.pk)
+        self.assertEqual(new.amount, Decimal('300.00'))
+        self.assertEqual(new.charges.count(), 3)
+        previous.refresh_from_db()
+        self.assertIsNone(previous.financial_catalog_id)
+        self.assertEqual(previous.amount, Decimal('1123.75'))
+
+    def test_full_class_blocks_new_contract_without_creating_charges(self):
+        self.group.capacity = 1
+        self.group.save(update_fields=['capacity'])
+        before = Charge.objects.count()
+        response = self.client.post('/api/enrollments/', {'student': self.student.pk, 'class_group': self.group.pk,
+            'start_date': self.today.isoformat(), 'plan': 'quarterly', 'payment_method': 'card',
+            'installments': 3, 'associated': False}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('class_group', response.data)
+        self.assertEqual(Charge.objects.count(), before)
+
+    def test_capacity_exception_requires_coordinator_and_physical_limit(self):
+        self.group.capacity, self.group.physical_capacity = 1, 2
+        self.group.save(update_fields=['capacity', 'physical_capacity'])
+        person = Person.objects.create(name='Vaga excepcional')
+        data = {'student': person.pk, 'class_group': self.group.pk, 'start_date': self.today.isoformat(), 'plan': 'quarterly',
+                'payment_method': 'card', 'installments': 3, 'associated': False, 'capacity_exception_reason': 'Autorização conferida'}
+        self.assertEqual(self.client.post('/api/enrollments/', data, format='json').status_code, 403)
+        coordinator = User.objects.create_user(email='coord@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        response = self.client.post('/api/enrollments/', data, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(AuditEvent.objects.filter(action='enrollment.capacity_exception', reason='Autorização conferida').exists())
+        data['student'] = Person.objects.create(name='Acima do limite físico').pk
+        self.assertEqual(self.client.post('/api/enrollments/', data, format='json').status_code, 400)
+
+    def test_contract_rejects_lead_linked_to_different_person(self):
+        other = Person.objects.create(name='Outra pessoa')
+        lead = Lead.objects.create(name='Lead', status='converted', student=other)
+        response = self.client.post('/api/enrollments/', {'student': self.student.pk, 'class_group': self.group.pk,
+            'source_lead': lead.pk, 'start_date': self.today.isoformat(), 'plan': 'quarterly',
+            'payment_method': 'card', 'installments': 3, 'associated': False}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('source_lead', response.data)
+
+    def test_waiting_list_priority_and_conversion_are_atomic(self):
+        first = Person.objects.create(name='Primeira')
+        second = Person.objects.create(name='Segunda')
+        for person in (first, second):
+            response = self.client.post('/api/waiting-list/', {'class_group': self.group.pk, 'person': person.pk}, format='json')
+            self.assertEqual(response.status_code, 201, response.data)
+        data = {'student': second.pk, 'class_group': self.group.pk, 'start_date': self.today.isoformat(),
+                'plan': 'quarterly', 'payment_method': 'card', 'installments': 3, 'associated': False}
+        self.assertEqual(self.client.post('/api/enrollments/', data, format='json').status_code, 400)
+        data['student'] = first.pk
+        created = self.client.post('/api/enrollments/', data, format='json')
+        self.assertEqual(created.status_code, 201, created.data)
+        waiting = self.client.get(f'/api/waiting-list/?class_group={self.group.pk}&status=waiting').data['results']
+        self.assertEqual([row['person'] for row in waiting], [second.pk])
+        self.assertTrue(AuditEvent.objects.filter(action='waiting_list.enrolled').exists())
+
+    def test_archiving_removes_person_from_active_waiting_list(self):
+        person = Person.objects.create(name='Pessoa na fila')
+        created = self.client.post('/api/waiting-list/', {'class_group': self.group.pk, 'person': person.pk}, format='json')
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(self.client.patch(f'/api/people/{person.pk}/', {'archived': True}, format='json').status_code, 200)
+        waiting = self.client.get(f'/api/waiting-list/?class_group={self.group.pk}&status=waiting').data['results']
+        self.assertEqual(waiting, [])
+        self.assertTrue(AuditEvent.objects.filter(action='waiting_list.cancelled', reason='Pessoa arquivada.').exists())
+
+    def test_catalog_fixed_due_day_preserves_reference_after_short_month(self):
+        config = {'plans': {'quarterly': {'months': 3, 'installments': [3]}},
+                  'prices': [{'category': 1, 'plan': 'quarterly', 'method': 'card', 'associated': False, 'amount': '300.00'}],
+                  'fees': {'standard': {'associated': '0.00', 'non_associated': '0.00'}},
+                  'due_rule': 'fixed', 'due_day': 31, 'due_reference': 'first_due'}
+        FinancialCatalogVersion.objects.create(version=1, status='published', effective_from=date(2026, 1, 1),
+            effective_until=date(2026, 12, 31), configuration=config, created_by=self.admin,
+            published_by=self.admin, published_at=timezone.now())
+        enrollment = self.enroll(date(2026, 1, 20))
+        self.assertEqual([charge.due_date for charge in enrollment.charges.all()],
+                         [date(2026, 1, 31), date(2026, 2, 28), date(2026, 3, 31)])
+
+    def test_custom_catalog_plan_is_available_and_stored(self):
+        config = {'plans': {'p_semestral': {'name': 'Plano semestral', 'months': 6, 'installments': [6]}},
+                  'prices': [{'category': 1, 'plan': 'p_semestral', 'method': 'card', 'associated': False, 'amount': '600.00'}],
+                  'fees': {'standard': {'associated': '0.00', 'non_associated': '0.00'}}}
+        FinancialCatalogVersion.objects.create(version=1, status='published', effective_from=date(2026, 1, 1),
+            effective_until=date(2026, 12, 31), configuration=config, created_by=self.admin,
+            published_by=self.admin, published_at=timezone.now())
+        options = self.client.get('/api/financial-options/?on=2026-02-01').data
+        self.assertEqual(options['plans'][0]['name'], 'Plano semestral')
+        enrollment = self.enroll(date(2026, 2, 1), 'p_semestral', 6)
+        self.assertEqual(enrollment.amount, Decimal('600.00'))
+        self.assertEqual(enrollment.charges.count(), 6)
+        self.assertEqual(self.client.get(f'/api/enrollments/{enrollment.pk}/').data['plan_name'], 'Plano semestral')
 
     def test_quarterly_annual_and_exact_installment_totals(self):
         for plan, months, counts in [('quarterly', 3, [1, 2, 3]), ('yearly', 12, [3, 6, 10, 12])]:
