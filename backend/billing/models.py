@@ -31,6 +31,28 @@ class FinancialCatalogVersion(models.Model):
         ]
 
 
+class InstructorPayoutAgreement(models.Model):
+    instructor = models.ForeignKey('core.Instructor', on_delete=models.PROTECT, related_name='payout_agreements')
+    modality = models.ForeignKey('core.Modality', on_delete=models.PROTECT, related_name='payout_agreements')
+    effective_from = models.DateField()
+    effective_until = models.DateField()
+    percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    allocation_method = models.CharField(max_length=16, choices=[('calendar_days', 'Dias de serviço'), ('equal_months', 'Meses de contrato')])
+    reason = models.TextField()
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    voided_at = models.DateTimeField(null=True, blank=True, editable=False)
+    voided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    void_reason = models.TextField(blank=True, editable=False)
+
+    class Meta:
+        ordering = ['-effective_from', '-id']
+        constraints = [
+            models.CheckConstraint(condition=Q(effective_until__gte=models.F('effective_from'), percentage__gte=0, percentage__lte=100), name='payout_agreement_valid'),
+            models.CheckConstraint(condition=Q(voided_at__isnull=True, voided_by__isnull=True, void_reason='') | (Q(voided_at__isnull=False, voided_by__isnull=False) & ~Q(void_reason='')), name='payout_agreement_void_consistent'),
+        ]
+
+
 class FrequencyPolicy(models.Model):
     short_days = models.PositiveSmallIntegerField(default=30)
     long_days = models.PositiveSmallIntegerField(default=90)
@@ -42,9 +64,39 @@ class FrequencyPolicy(models.Model):
         constraints = [models.CheckConstraint(condition=Q(short_days__gte=1, long_days__gte=models.F('short_days'), long_days__lte=3650, absence_threshold__gte=1, absence_threshold__lte=100), name='frequency_policy_valid')]
 
 
+class BenefitAuthorization(models.Model):
+    scope = models.CharField(max_length=10, choices=[('academic', 'Acadêmico'), ('ecowork', 'EcoWork')], default='academic')
+    person = models.ForeignKey('core.Person', on_delete=models.PROTECT, related_name='benefits')
+    modality = models.ForeignKey('core.Modality', null=True, blank=True, on_delete=models.PROTECT, related_name='benefits')
+    plan = models.CharField(max_length=40, blank=True)
+    starts_on = models.DateField()
+    ends_on = models.DateField()
+    kind = models.CharField(max_length=10, choices=[('percent', 'Percentual'), ('fixed', 'Valor fixo')])
+    value = models.DecimalField(max_digits=12, decimal_places=2)
+    fee_waiver = models.BooleanField(default=False)
+    reason = models.TextField()
+    status = models.CharField(max_length=10, choices=[('pending', 'Pendente'), ('approved', 'Aprovada'), ('rejected', 'Rejeitada')], default='pending')
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_reason = models.TextField(blank=True)
+    institutional_reference = models.CharField(max_length=250, blank=True)
+    approval_limit_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        constraints = [
+            models.CheckConstraint(condition=Q(ends_on__gte=models.F('starts_on')) & (Q(value__gt=0) | Q(value=0, fee_waiver=True)) & (~Q(kind='percent') | Q(value__lte=100)), name='benefit_valid_values'),
+            models.CheckConstraint(condition=Q(status='pending', decided_by__isnull=True, decided_at__isnull=True) | Q(status__in=['approved', 'rejected'], decided_by__isnull=False, decided_at__isnull=False), name='benefit_decision_consistent'),
+        ]
+
+
 class Enrollment(models.Model):
     financial_catalog = models.ForeignKey(FinancialCatalogVersion, null=True, blank=True, on_delete=models.PROTECT, related_name='enrollments', editable=False)
     source_lead = models.ForeignKey('core.Lead', null=True, blank=True, on_delete=models.PROTECT, related_name='origin_enrollments')
+    benefit = models.ForeignKey(BenefitAuthorization, null=True, blank=True, on_delete=models.PROTECT, related_name='enrollments')
+    benefit_snapshot = models.JSONField(default=dict, editable=False)
     contract_version = models.PositiveSmallIntegerField(default=0, editable=False)
     end_date = models.DateField(null=True, blank=True, editable=False)
     associated = models.BooleanField(default=False)
@@ -57,7 +109,7 @@ class Enrollment(models.Model):
     class_group = models.ForeignKey('core.ClassGroup', on_delete=models.PROTECT, related_name='enrollments')
     start_date = models.DateField()
     plan = models.CharField(max_length=40)
-    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     administrative_status = models.CharField(max_length=12, default='regular', choices=[('regular', 'Regular'), ('cancelled', 'Cancelada')])
     cancelled_on = models.DateField(null=True, blank=True, editable=False)
     kind = models.CharField(max_length=10, default='regular', choices=[('regular', 'Comum'), ('trial', 'Experimental')])
@@ -65,7 +117,7 @@ class Enrollment(models.Model):
 
     class Meta:
         ordering = ['-id']
-        constraints = [models.CheckConstraint(condition=Q(amount__gt=0), name='enrollment_positive_amount')]
+        constraints = [models.CheckConstraint(condition=Q(amount__gt=0) | Q(amount=0, benefit__isnull=False), name='enrollment_amount_valid')]
 
 
 class CommercialCondition(models.Model):
@@ -130,7 +182,7 @@ class Charge(models.Model):
 
     @property
     def received(self):
-        return sum((p.amount for p in self.payments.all() if p.paid_on), Decimal('0.00'))
+        return sum((p.amount for p in self.payments.all() if p.paid_on and not p.voided_at), Decimal('0.00'))
 
     @property
     def is_paid(self):
@@ -154,12 +206,32 @@ class Payment(models.Model):
     reference = models.CharField(max_length=160, blank=True)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
+    voided_at = models.DateTimeField(null=True, blank=True, editable=False)
+    voided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    void_reason = models.TextField(blank=True, editable=False)
 
     class Meta:
         ordering = ['-paid_on', '-id']
         constraints = [
             models.CheckConstraint(condition=Q(amount__gt=0), name='payment_positive_amount'),
+            models.CheckConstraint(condition=Q(voided_at__isnull=True, voided_by__isnull=True, void_reason='') | (Q(voided_at__isnull=False, voided_by__isnull=False) & ~Q(void_reason='')), name='payment_void_consistent'),
         ]
+
+
+class PaymentRefund(models.Model):
+    payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name='refunds')
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    refunded_on = models.DateField()
+    method = models.CharField(max_length=20, choices=Payment._meta.get_field('method').choices)
+    reference = models.CharField(max_length=160, blank=True)
+    reason = models.TextField()
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    request_key = models.UUIDField(unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-refunded_on', '-id']
+        constraints = [models.CheckConstraint(condition=Q(amount__gt=0), name='academic_refund_positive')]
 
 
 class CollectionMessage(models.Model):

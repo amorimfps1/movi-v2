@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
+from billing.models import BenefitAuthorization
 from core.models import Condominium, CondominiumAssociation, Person, ResidenceVerification
-from .catalog import PRODUCTS
 
 
 class CondominiumSerializer(serializers.ModelSerializer):
@@ -45,7 +45,8 @@ class ResidenceSerializer(serializers.ModelSerializer):
 
 class QuoteRequestSerializer(serializers.Serializer):
     person = serializers.PrimaryKeyRelatedField(queryset=Person.objects.filter(archived=False))
-    product = serializers.ChoiceField(choices=list(PRODUCTS))
+    product = serializers.CharField(max_length=20)
+    benefit = serializers.PrimaryKeyRelatedField(queryset=BenefitAuthorization.objects.all(), required=False, allow_null=True)
 
 
 class ProductSerializer(serializers.Serializer):
@@ -67,3 +68,4 @@ class QuoteSerializer(serializers.Serializer):
     association = serializers.IntegerField(allow_null=True)
     reason = serializers.CharField()
     quoted_on = serializers.DateField()
+    benefit_snapshot = serializers.JSONField()

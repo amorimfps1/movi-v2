@@ -10,7 +10,7 @@ from rest_framework.exceptions import ValidationError
 from core.audit import record
 from core.models import Condominium, Person, OperationLock
 from core.services import lock_admin
-from .catalog import PRODUCTS
+from .catalog import current_catalog
 from .models import Charge, Order, Payment, Refund
 from .services import quote
 
@@ -23,13 +23,15 @@ def add_months(day, months):
 @transaction.atomic
 def create_order(actor, data):
     lock_admin(actor)
+    OperationLock.objects.get_or_create(key='ecowork-catalog')
+    OperationLock.objects.select_for_update().get(key='ecowork-catalog')
     person_id = data['person'].pk
     # Same lock order as residence verification: condominium before person.
     residence = data['person'].residence_verifications.filter(revoked_at__isnull=True).first()
     if residence:
         Condominium.objects.select_for_update().get(pk=residence.condominium_id)
     person = Person.objects.select_for_update().get(pk=person_id)
-    fingerprint = hashlib.sha256(json.dumps({k: (v.pk if k == 'person' else str(v)) for k, v in data.items()}, sort_keys=True).encode()).hexdigest()
+    fingerprint = hashlib.sha256(json.dumps({k: (v.pk if k in ('person', 'benefit') and v is not None else str(v)) for k, v in data.items()}, sort_keys=True).encode()).hexdigest()
     previous = Order.objects.filter(person=person, request_key=data['request_key']).first()
     if previous:
         if previous.request_hash != fingerprint:
@@ -40,7 +42,10 @@ def create_order(actor, data):
     current_residence = person.residence_verifications.filter(revoked_at__isnull=True).first()
     if (residence.pk if residence else None) != (current_residence.pk if current_residence else None):
         raise ValidationError('A residência mudou durante a operação. Consulte novamente.')
-    product = PRODUCTS[data['product']]
+    catalog, products, _ = current_catalog(timezone.localdate())
+    if data['product'] not in products:
+        raise ValidationError({'product': 'Produto indisponível no catálogo vigente.'})
+    product = products[data['product']]
     installments, mode, quantity = data['installments'], data['billing_mode'], data['quantity']
     if installments > product['max_installments']:
         raise ValidationError({'installments': 'Quantidade de parcelas acima do limite do produto.'})
@@ -50,20 +55,33 @@ def create_order(actor, data):
         raise ValidationError('Avulsos exigem pagamento integral antes do uso.')
     if product['months'] and quantity != 1:
         raise ValidationError('Contrate um plano por operação.')
-    pricing = quote(person, data['product'])
+    benefit = data.get('benefit')
+    if benefit:
+        from billing.models import BenefitAuthorization
+        benefit = BenefitAuthorization.objects.select_for_update().get(pk=benefit.pk)
+    pricing = quote(person, data['product'], benefit)
     if data['expected_total'] != pricing['total'] * quantity:
         raise ValidationError('Preço ou elegibilidade mudou. Confira a simulação e confirme novamente.')
+    if pricing['total'] and mode == 'office' and int(pricing['total'] * quantity * 100) < installments:
+        raise ValidationError({'installments': 'Cada parcela deve ter valor de pelo menos um centavo.'})
     order = Order.objects.create(
         person=person, product=data['product'], product_name=product['name'], months=product['months'],
         quantity=quantity, base_price=pricing['base_price'], discount_percent=pricing['discount_percent'],
         total=pricing['total'] * quantity, residence_id=pricing['residence_verification'],
         association_id=pricing['association'] if pricing['discount_percent'] else None,
         billing_mode=mode, installments=installments, first_due=data['first_due'],
-        actor=actor, request_key=data['request_key'], request_hash=fingerprint,
+        actor=actor, request_key=data['request_key'], request_hash=fingerprint, catalog=catalog,
+        benefit=benefit, benefit_snapshot=pricing['benefit_snapshot'],
     )
+    # Fully waived plans start on purchase and never create fictitious debts or receipts.
+    if order.total == 0:
+        order.starts_on = timezone.localdate()
+        order.ends_on = add_months(order.starts_on, order.months)
+        order.save(update_fields=['starts_on', 'ends_on'])
     # Card installments belong to the card agreement, not monthly customer debts.
-    count = installments if mode == 'office' else 1
-    cents, remainder = divmod(int(order.total * 100), count)
+    count = 0 if order.total == 0 else installments if mode == 'office' else 1
+    if count:
+        cents, remainder = divmod(int(order.total * 100), count)
     for index in range(count):
         Charge.objects.create(order=order, number=index + 1,
             amount=Decimal(cents + (index < remainder)) / 100,

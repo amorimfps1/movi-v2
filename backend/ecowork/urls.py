@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import AssociationViewSet, CondominiumViewSet, ProductView, QuoteView, ResidenceViewSet
 from .finance_api import ChargeViewSet, OrderViewSet, PaymentViewSet
+from .catalog_api import EcoCatalogViewSet
 
 router = DefaultRouter()
 router.register("condominiums", CondominiumViewSet, basename="condominium")
@@ -11,6 +12,7 @@ router.register("residence-verifications", ResidenceViewSet, basename="residence
 router.register("ecowork/orders", OrderViewSet, basename="ecowork-order")
 router.register("ecowork/charges", ChargeViewSet, basename="ecowork-charge")
 router.register("ecowork/payments", PaymentViewSet, basename="ecowork-payment")
+router.register("ecowork/catalogs", EcoCatalogViewSet, basename="ecowork-catalog")
 
 urlpatterns = [
     path("", include(router.urls)),

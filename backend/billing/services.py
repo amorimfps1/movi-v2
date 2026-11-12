@@ -31,6 +31,8 @@ def ensure_class_capacity(group, start, end, person_id=None, limit=None):
             cancellation_end = cancellation - timedelta(days=1)
             finishes = min(finishes, cancellation_end) if finishes else cancellation_end
         begins = max(begins, start)
+        if finishes and begins > finishes:
+            continue
         changes[begins] = changes.get(begins, 0) + 1
         if finishes and finishes < date.max and (end is None or finishes < end):
             after = finishes + timedelta(days=1)
@@ -92,8 +94,8 @@ PENDING_DECISIONS = [
     ('DN-004', 'Tabela e vencimentos', 'Cartão 2026 parametrizado; conferir categorias, Karatê, boleto e vencimentos provisórios.'),
     ('DN-005', 'Contratos legados', 'Novos contratos têm cronograma; vínculos antigos exigem revisão antes de gerar obrigações.'),
     ('DN-006', 'Cobrança esperada ausente', 'Novos contratos bloqueiam participação e permitem regularização auditada; legados exigem revisão.'),
-    ('DN-007', 'Bolsas e descontos', 'Valor zero e benefícios indisponíveis.'),
-    ('DN-008', 'Pagamentos e correções', 'Recebimentos parciais estão disponíveis; excedentes são recusados. Correções e estornos ainda não estão disponíveis.'),
+    ('DN-007', 'Bolsas e descontos', 'Solicitação, aprovação e aplicação acadêmica disponíveis; alterações posteriores e EcoWork ainda precisam ser concluídos.'),
+    ('DN-008', 'Pagamentos e correções', 'Recebimentos parciais, invalidação auditada e devolução separada estão disponíveis; homologação e concorrência em PostgreSQL pendentes.'),
     ('DN-009', 'Inadimplência', 'Base sem carência; multas, juros e exceções não definidos.'),
     ('DN-010', 'Suspensão e trancamento', 'Suspensão por até 30 dias autorizada pela Coordenação; ajustes contratuais e prorrogações exigem novos procedimentos.'),
     ('DN-011', 'Cancelamento e renovação', 'Renovação explícita sem taxa disponível para contratos parametrizados; devolução e reativação não definidas.'),

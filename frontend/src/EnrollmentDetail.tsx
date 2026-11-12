@@ -19,6 +19,7 @@ import { ActionForm, RecordForm } from "./forms";
 import { enrollmentFields } from "./schema";
 import { date, label, money, today } from "./format";
 import { useAuth } from "./auth";
+import { CancelEnrollment } from "./CancelEnrollment";
 export function EnrollmentDetail() {
   const { id } = useParams();
   return <EnrollmentRecord key={id} id={id!} />;
@@ -62,7 +63,7 @@ function EnrollmentRecord({ id }: { id: string }) {
             >
               Ver aluno <ArrowUpRight size={17} />
             </Link>
-            {value.administrative_status !== "cancelled" && (
+            {value.administrative_status !== "cancelled" && !value.cancelled_on && (
               <Button variant="secondary" onClick={() => setCancel(true)}>
                 <Ban size={17} />
                 Cancelar matrícula
@@ -75,6 +76,7 @@ function EnrollmentRecord({ id }: { id: string }) {
         }
       />
       {notice && <Notice tone="success">{notice}</Notice>}
+      {value.cancelled_on && value.administrative_status !== "cancelled" && <Notice tone="warning">Cancelamento programado para {date(value.cancelled_on)}.</Notice>}
       {suspending && <ActionForm title="Suspender matrícula" endpoint={`enrollments/${id}/suspensions/`}
         description="A suspensão impede a participação no período autorizado e não altera cobranças nem prorroga o contrato."
         fields={[{ key: "starts_on", label: "Início", type: "date", required: true, default: today() },
@@ -265,26 +267,9 @@ function EnrollmentRecord({ id }: { id: string }) {
         </div>
       </div>
       {cancel && (
-        <ActionForm
-          title="Cancelar matrícula"
-          endpoint={`enrollments/${id}/cancel/`}
-          description="O cancelamento preserva dívidas e histórico. Não provoca devolução nem reativação automática por pagamento."
-          fields={[
-            {
-              key: "reason",
-              label: "Motivo do cancelamento",
-              required: true,
-              type: "textarea",
-              wide: true,
-            },
-          ]}
-          button="Confirmar cancelamento"
+        <CancelEnrollment id={id}
           onClose={() => setCancel(false)}
-          onSaved={() =>
-            setNotice(
-              "Matrícula cancelada. Histórico e obrigações preservados.",
-            )
-          }
+          onSaved={() => setNotice("Cancelamento registrado; histórico preservado.")}
         />
       )}
     </>

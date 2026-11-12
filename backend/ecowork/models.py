@@ -3,7 +3,29 @@ from django.db import models
 from django.utils import timezone
 
 
+class CatalogVersion(models.Model):
+    version = models.PositiveIntegerField(unique=True)
+    status = models.CharField(max_length=12, choices=[('draft', 'Rascunho'), ('published', 'Publicado')], default='draft')
+    effective_from = models.DateField()
+    effective_until = models.DateField(null=True, blank=True)
+    configuration = models.JSONField(default=dict)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-version']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(effective_until__isnull=True) | models.Q(effective_until__gte=models.F('effective_from')), name='eco_catalog_valid_period'),
+            models.CheckConstraint(condition=models.Q(status='draft', published_by__isnull=True, published_at__isnull=True) | models.Q(status='published', published_by__isnull=False, published_at__isnull=False), name='eco_catalog_publication_valid'),
+        ]
+
+
 class Order(models.Model):
+    catalog = models.ForeignKey(CatalogVersion, null=True, blank=True, on_delete=models.PROTECT, related_name='orders', editable=False)
+    benefit = models.ForeignKey('billing.BenefitAuthorization', null=True, blank=True, on_delete=models.PROTECT, related_name='ecowork_orders', editable=False)
+    benefit_snapshot = models.JSONField(default=dict, editable=False)
     person = models.ForeignKey('core.Person', on_delete=models.PROTECT, related_name='ecowork_orders')
     product = models.CharField(max_length=20)
     product_name = models.CharField(max_length=100)
@@ -32,7 +54,7 @@ class Order(models.Model):
         ordering = ['-id']
         constraints = [
             models.UniqueConstraint(fields=['person', 'request_key'], name='ecowork_order_request_unique'),
-            models.CheckConstraint(condition=models.Q(total__gt=0, quantity__gte=1, installments__gte=1), name='ecowork_order_positive'),
+            models.CheckConstraint(condition=(models.Q(total__gt=0) | models.Q(total=0, months__gt=0, benefit__isnull=False) | models.Q(total=0, discount_percent=100, months__gt=0, association__isnull=False)) & models.Q(quantity__gte=1, installments__gte=1), name='ecowork_order_positive'),
         ]
 
     @property

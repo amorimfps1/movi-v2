@@ -3,7 +3,7 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
-from .models import Enrollment, Charge, Payment, CommercialCondition, EnrollmentSuspension, WaitingListEntry
+from .models import Enrollment, Charge, Payment, PaymentRefund, CommercialCondition, EnrollmentSuspension, WaitingListEntry
 from .services import DecisionRequired, evaluate_eligibility
 
 
@@ -27,8 +27,8 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         model = Enrollment
         fields = ['id','student','class_group','student_name','class_name','start_date','plan','plan_name','amount',
                   'administrative_status','cancelled_on','kind','created_at','eligibility', 'contract_version',
-                  'end_date', 'associated', 'payment_method', 'installments', 'fee_amount', 'renewed_from', 'schedule', 'financial_catalog', 'source_lead', 'capacity_exception_reason']
-        read_only_fields = ['administrative_status','cancelled_on','created_at', 'contract_version', 'end_date', 'fee_amount', 'renewed_from', 'schedule', 'financial_catalog']
+                  'end_date', 'associated', 'payment_method', 'installments', 'fee_amount', 'renewed_from', 'schedule', 'financial_catalog', 'source_lead', 'capacity_exception_reason', 'benefit', 'benefit_snapshot']
+        read_only_fields = ['administrative_status','cancelled_on','created_at', 'contract_version', 'end_date', 'fee_amount', 'renewed_from', 'schedule', 'financial_catalog', 'benefit_snapshot']
         extra_kwargs = {'amount': {'required': False}}
 
     @extend_schema_field(EligibilitySerializer)
@@ -100,13 +100,36 @@ class ReceiptSerializer(serializers.Serializer):
         return value
 
 
+class PaymentRefundSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentRefund
+        fields = ['id', 'payment', 'amount', 'refunded_on', 'method', 'reference', 'reason', 'actor', 'created_at']
+        read_only_fields = fields
+
+
+class PaymentRefundRequestSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
+    refunded_on = serializers.DateField()
+    method = serializers.ChoiceField(choices=Payment._meta.get_field('method').choices)
+    reference = serializers.CharField(max_length=160, required=False, allow_blank=True, default='')
+    reason = serializers.CharField(max_length=2000)
+    request_key = serializers.UUIDField()
+
+    def validate_refunded_on(self, value):
+        if value > timezone.localdate():
+            raise serializers.ValidationError('A devolução não pode ter data futura.')
+        return value
+
+
 class PaymentSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='charge.enrollment.student.name', read_only=True)
     category = serializers.CharField(source='charge.category', read_only=True)
+    refunds = PaymentRefundSerializer(many=True, read_only=True)
 
     class Meta:
         model = Payment
-        fields = ['id','charge','amount','paid_on','method','reference','actor','created_at','student_name','category']
+        fields = ['id','charge','amount','paid_on','method','reference','actor','created_at','student_name','category','voided_at','voided_by','void_reason','refunds']
+        read_only_fields = fields
 
 
 class ConditionSerializer(serializers.ModelSerializer):
@@ -138,6 +161,7 @@ class SummarySerializer(serializers.Serializer):
     conversions = serializers.IntegerField(required=False)
     converted_enrollments = serializers.IntegerField(required=False)
     received = serializers.DecimalField(max_digits=12,decimal_places=2,required=False)
+    refunded = serializers.DecimalField(max_digits=12,decimal_places=2,required=False)
     expected = serializers.DecimalField(max_digits=12,decimal_places=2,required=False)
     outstanding = serializers.DecimalField(max_digits=12,decimal_places=2,required=False)
     overdue = serializers.DecimalField(max_digits=12,decimal_places=2,required=False)

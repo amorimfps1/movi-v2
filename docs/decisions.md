@@ -9,6 +9,9 @@ O solicitante aprovou todas as propostas do documento `MOVIV2_Decisoes_de_Negoci
 - **DN-011 — parcelas após cancelamento acadêmico:** cancelar parcelas não pagas referentes a períodos não prestados; manter parcelas já vencidas ou referentes a serviços prestados. Decisão do solicitante nesta conversa; exige identificar os períodos de serviço de cada obrigação e preservar o histórico.
 - **DN-021 — transferência:** o operador poderá escolher no site entre manter as condições do contrato e criar um novo contrato, conforme a transferência. A data de efeito e o histórico de ambos os vínculos devem ser preservados.
 - **DN-011 — parcelas e períodos diferentes:** quando o número de parcelas for diferente do número de meses de prestação, a Coordenação selecionará manualmente quais parcelas cancelar e registrará a justificativa. Parcelas já vencidas ou referentes a serviços prestados devem ser mantidas.
+- **DN-008 — devolução acadêmica:** devolução de dinheiro não reabre a cobrança original; a Coordenação registra um ajuste separado. Diferencia-se da invalidação de lançamento incorreto, que corrige o saldo.
+- **DN-007 — plano EcoWork integralmente dispensado:** a vigência começa na contratação, sem cobrança ou pagamento fictício.
+- **DN-007 — benefícios EcoWork acumulados:** aplicar primeiro o desconto de morador e depois o benefício individual sobre o valor restante. A aprovação e os limites institucionais continuam aplicáveis ao benefício individual.
 
 ## Atualização — 03/11/2026
 

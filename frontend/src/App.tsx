@@ -49,7 +49,10 @@ import { Finance, ChargeDetail, PaymentDetail } from "./Finance";
 import { Reports, PoliciesPage } from "./Reports";
 import { AccessList, AccessDetail, AuditList, AuditDetail } from "./Management";
 import { FinancialCatalog } from "./FinancialCatalog";
+import { EcoCatalog } from "./EcoCatalog";
+import { payoutAgreementSpec, PayoutAgreementDetail } from "./PayoutAgreements";
 import { LeadRetention } from "./LeadRetention";
+import { benefitSpec, BenefitDetail } from "./Benefits";
 type NavItem = {
   path: string;
   label: string;
@@ -103,6 +106,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     items: [
       { path: "/financeiro", label: "Financeiro", icon: Wallet, admin: true },
       { path: "/ecowork", label: "EcoWork", icon: Wallet, admin: true },
+      { path: "/beneficios", label: "Bolsas e descontos", icon: Wallet, admin: true },
       { path: "/pessoas", label: "Pessoas", icon: UsersRound, admin: true },
       { path: "/revisao-contatos", label: "Revisão de contatos", icon: History, admin: true },
       { path: "/relatorios", label: "Relatórios", icon: ChartNoAxesCombined },
@@ -113,6 +117,8 @@ const groups: { label: string; items: NavItem[] }[] = [
         coordinator: true,
       },
       { path: "/configuracoes-financeiras", label: "Tabelas financeiras", icon: Wallet, coordinator: true },
+      { path: "/catalogo-ecowork", label: "Catálogo EcoWork", icon: Wallet, coordinator: true },
+      { path: "/acordos-repasse", label: "Acordos de repasse", icon: Wallet, coordinator: true },
       { path: "/auditoria", label: "Histórico", icon: History, admin: true },
     ],
   },
@@ -363,6 +369,8 @@ export function App() {
           <Route index element={<Dashboard />} />
           <Route element={<AdminGuard />}>
             <Route path="ecowork" element={<EcoWork />} />
+            <Route path="beneficios" element={<ResourceList spec={benefitSpec} />} />
+            <Route path="beneficios/:id" element={<BenefitDetail />} />
             <Route path="revisao-contatos" element={<LeadRetention />} />
             {[personSpec, condominiumSpec, associationSpec, residenceSpec].map(spec => <Route key={spec.slug} path={spec.slug}>
               <Route index element={<ResourceList key={spec.slug} spec={spec} />} />
@@ -402,6 +410,9 @@ export function App() {
               <Route path="acessos" element={<AccessList />} />
               <Route path="acessos/:id" element={<AccessDetail />} />
               <Route path="configuracoes-financeiras" element={<FinancialCatalog />} />
+              <Route path="catalogo-ecowork" element={<EcoCatalog />} />
+              <Route path="acordos-repasse" element={<ResourceList spec={payoutAgreementSpec} />} />
+              <Route path="acordos-repasse/:id" element={<PayoutAgreementDetail />} />
             </Route>
             <Route path="auditoria" element={<AuditList />} />
             <Route path="auditoria/:id" element={<AuditDetail />} />

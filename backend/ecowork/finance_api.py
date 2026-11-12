@@ -1,12 +1,12 @@
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from billing.models import BenefitAuthorization
 from drf_spectacular.utils import extend_schema, extend_schema_serializer
 
 from core.models import Person
 from core.permissions import IsAdministrative, IsInternal
 from core.views import ListConfiguration
-from .catalog import PRODUCTS
 from .finance import create_order, receive, cancel_order, void_payment, refund_payment
 from .models import Order, Charge, Payment, Refund
 from .filters import OrderFilter
@@ -51,19 +51,20 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'person', 'person_name', 'product', 'product_name', 'months', 'quantity', 'base_price', 'discount_percent', 'total', 'residence', 'association', 'billing_mode', 'installments', 'first_due', 'starts_on', 'ends_on', 'coverage_status', 'actor', 'created_at', 'charges', 'cancelled_at', 'cancelled_by', 'cancellation_reason', 'cancellation_mode']
+        fields = ['id', 'person', 'person_name', 'product', 'product_name', 'months', 'quantity', 'base_price', 'discount_percent', 'total', 'residence', 'association', 'billing_mode', 'installments', 'first_due', 'starts_on', 'ends_on', 'coverage_status', 'actor', 'created_at', 'charges', 'cancelled_at', 'cancelled_by', 'cancellation_reason', 'cancellation_mode', 'catalog', 'benefit', 'benefit_snapshot']
         read_only_fields = fields
 
 
 class OrderRequestSerializer(serializers.Serializer):
     person = serializers.PrimaryKeyRelatedField(queryset=Person.objects.filter(archived=False))
-    product = serializers.ChoiceField(choices=list(PRODUCTS))
+    product = serializers.CharField(max_length=20)
     quantity = serializers.IntegerField(min_value=1, max_value=100, default=1)
     billing_mode = serializers.ChoiceField(choices=['cash', 'office', 'card'])
     installments = serializers.IntegerField(min_value=1, max_value=12, default=1)
     first_due = serializers.DateField()
     expected_total = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
     request_key = serializers.UUIDField()
+    benefit = serializers.PrimaryKeyRelatedField(queryset=BenefitAuthorization.objects.all(), required=False, allow_null=True)
 
 
 class ReceiveSerializer(serializers.Serializer):
@@ -132,6 +133,7 @@ class OrderViewSet(ListConfiguration, viewsets.ReadOnlyModelViewSet):
             orders=Count('order', distinct=True),
             refunded=Sum('refunded_amount', default=Decimal('0.00')),
         )
+        summary['orders'] = Order.objects.filter(person=person).count()
         summary['net_paid'] = summary['paid'] - summary['refunded']
         return Response(PersonSummarySerializer(summary).data)
 

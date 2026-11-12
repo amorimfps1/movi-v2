@@ -4,6 +4,7 @@ import json
 from django.db import transaction
 from django.db.models import Max, Q
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -31,6 +32,11 @@ class CatalogSerializer(serializers.ModelSerializer):
         if not isinstance(attrs.get('configuration', getattr(self.instance, 'configuration', {})), dict):
             raise serializers.ValidationError({'configuration': 'A configuração deve ser um objeto.'})
         return attrs
+
+
+class EndCatalogSerializer(serializers.Serializer):
+    effective_until = serializers.DateField()
+    reason = serializers.CharField(max_length=2000)
 
 
 def coordinator(user):
@@ -127,4 +133,27 @@ class FinancialCatalogViewSet(viewsets.ModelViewSet):
         catalog.published_at = timezone.now()
         catalog.save(update_fields=['status', 'published_by', 'published_at'])
         record(actor, 'financial_catalog.publish', catalog, reason=reason.strip(), metadata={'version': catalog.version, 'effective_from': catalog.effective_from.isoformat(), 'effective_until': catalog.effective_until.isoformat() if catalog.effective_until else None})
+        return Response(self.get_serializer(catalog).data)
+
+    @extend_schema(request=EndCatalogSerializer, responses=CatalogSerializer)
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def end(self, request, pk=None):
+        actor = coordinator(request.user)
+        OperationLock.objects.get_or_create(key='financial-catalog-versions')
+        OperationLock.objects.select_for_update().get(key='financial-catalog-versions')
+        catalog = FinancialCatalogVersion.objects.select_for_update().get(pk=self.get_object().pk)
+        data = EndCatalogSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        end = data.validated_data['effective_until']
+        if catalog.status != 'published' or end < timezone.localdate() or end < catalog.effective_from:
+            raise ValidationError('Informe um fim atual ou futuro, após o início da tabela publicada.')
+        if catalog.effective_until and end >= catalog.effective_until:
+            raise ValidationError('O novo fim deve antecipar o fim vigente.')
+        if catalog.enrollments.filter(start_date__gt=end).exists():
+            raise ValidationError('Há contratações já registradas com início após a data informada.')
+        previous = catalog.effective_until
+        catalog.effective_until = end
+        catalog.save(update_fields=['effective_until'])
+        record(actor, 'financial_catalog.ended', catalog, reason=data.validated_data['reason'], metadata={'before': previous.isoformat() if previous else None, 'after': end.isoformat()})
         return Response(self.get_serializer(catalog).data)

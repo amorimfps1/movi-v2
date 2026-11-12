@@ -1,5 +1,33 @@
 # Progresso e ponto de retomada — MOVI+
 
+## Cancelamento programado — 12/11/2026
+
+O cancelamento acadêmico aceita data de efeito futura, preservando elegibilidade, ocupação e situação regular até essa data. A Coordenação pode selecionar parcelas posteriores não pagas relativas a serviços não prestados; ficam bloqueadas para recebimento desde o agendamento e são canceladas na data escolhida. Suspensões não podem ultrapassar essa data. Testes direcionados e TypeScript passaram; validação integrada e concorrência em PostgreSQL permanecem pendentes. As notas históricas abaixo sobre cancelamento futuro descrevem o estado anterior a esta implementação.
+
+O catálogo EcoWork aceita desconto de morador de 100% em planos. A contratação começa no próprio dia, sem cobrança ou pagamento fictício, e aparece no resumo do cliente. A migration `ecowork.0004` foi aplicada ao banco de desenvolvimento. A autorização individual de bolsas e descontos EcoWork continua pendente. A suíte anterior ao desconto integral passou com 198 testes em PostgreSQL; os testes específicos da nova regra passaram em SQLite.
+
+Atualização: solicitações de benefício agora distinguem Acadêmico e EcoWork. No EcoWork, a Coordenação configura o limite de aprovação no catálogo e aprova os benefícios; percentuais acima do limite e bolsas integrais exigem referência institucional. Na contratação, o desconto individual é aplicado após o de morador e os dois valores ficam preservados no histórico. Bolsas integrais iniciam na data da contratação, sem cobrança ou pagamento fictício. As migrations `billing.0022` e `ecowork.0005` foram aplicadas ao banco de desenvolvimento. Cinco testes do catálogo e benefícios passaram em PostgreSQL, 36 testes de contrato/catálogo passaram em SQLite, e TypeScript e 41 testes de frontend passaram. Alterações posteriores em benefícios já aplicados ainda não estão implementadas. A nota anterior sobre autorização individual pendente descreve o estado anterior a esta atualização.
+
+## Acordos de repasse — 12/11/2026
+
+Solicitante confirmou que o banco atual é de desenvolvimento e que as migrations anteriores foram aplicadas. Criado cadastro de acordos por instrutor, modalidade, vigência, percentual e critério de apropriação, restrito à Coordenação, auditado e sem alteração de acordos existentes. Períodos sobrepostos para o mesmo instrutor/modalidade são recusados. `billing.0015` aplicada ao banco de desenvolvimento; teste direcionado em SQLite e TypeScript passaram.
+
+O cálculo, a atribuição em substituições, o fechamento mensal e a reabertura auditada ainda não foram implementados. O cadastro por si só não produz valores de repasse.
+
+O serviço de rateio distribui recebimentos entre meses de prestação por dias ou por meses de contrato, preservando a soma exata em centavos e o dia original em meses curtos. Três testes unitários passaram. O serviço ainda não está conectado ao cálculo ou fechamento de repasses.
+
+Coordenação pode invalidar um acordo cadastrado incorretamente, com motivo e auditoria, permitindo cadastrar outro para a mesma vigência. O acordo invalidado permanece no histórico. A migration `billing.0017` foi aplicada ao banco de desenvolvimento; teste direcionado e TypeScript passaram. Ao implementar fechamentos, a invalidação deverá respeitar fechamentos já aprovados e exigir reabertura quando necessário.
+
+`billing.0018` adiciona restrições de consistência de motivo e responsável para invalidações de pagamento e acordo; aplicada ao banco de desenvolvimento. Os testes direcionados dos dois fluxos passaram em SQLite.
+
+Bolsas e descontos acadêmicos: Secretaria ou Coordenação solicita; Coordenação decide com justificativa. Benefícios acima do limite configurável e bolsas integrais exigem referência de autorização institucional. Contratos preservam as condições, redistribuem o valor líquido em centavos e registram isenção da taxa separadamente; bolsa integral não cria pagamento fictício. As migrations `billing.0019` e `0020` foram aplicadas ao banco de desenvolvimento. Testes direcionados de desconto parcial, bolsa integral e limite aprovado passaram em SQLite; falta homologação de interface, concorrência PostgreSQL, alterações de benefícios existentes e benefícios EcoWork.
+
+Catálogo EcoWork: Coordenação pode configurar produtos, duração, preço, parcelamento e desconto de morador em versões com prévia, publicação auditada e vigência. Novas contratações guardam a versão; antigas preservam os valores. Após a primeira publicação, datas sem catálogo são recusadas. É possível encerrar vigência sem efeito retroativo e copiar a configuração para nova versão. A migration `ecowork.0003` foi aplicada ao banco de desenvolvimento; testes direcionados e TypeScript passaram. A versão atual limita desconto de morador a 99%; bolsa integral e isenções EcoWork ainda exigem implementação.
+
+Recebimentos acadêmicos incorretos podem ser invalidados pela Coordenação com justificativa e auditoria. O lançamento permanece no histórico, o saldo é recalculado e os relatórios excluem esse lançamento inválido. A ação não representa devolução de dinheiro. Migration `billing.0016` aplicada ao banco de desenvolvimento; 22 testes direcionados e TypeScript passaram.
+
+Devoluções acadêmicas são ajustes separados, registrados pela Coordenação com data, valor, meio, justificativa e chave idempotente; não reabrem a cobrança. O caixa líquido considera a devolução em sua própria data e há exportação CSV específica. Valores devolvidos não podem exceder o pagamento e impedem a invalidação posterior do lançamento. Migration `billing.0021` aplicada no banco de desenvolvimento; teste direcionado, TypeScript e OpenAPI passaram. Concorrência PostgreSQL e interface ainda requerem validação.
+
 ## Continuação — tabelas financeiras e recebimentos acadêmicos
 
 Catálogos acadêmicos podem ser editados pela Coordenação, conferidos e publicados com justificativa; publicação valida estrutura, vigência e revisão da prévia. Novas matrículas consultam a tabela publicada aplicável e guardam sua referência; condições e cobranças antigas são preservadas. Enquanto não houver tabela publicada, a tabela original de 2026 permanece como compatibilidade transitória; após a primeira publicação, datas sem tabela são recusadas. Bolsas e regras EcoWork ainda não são parametrizadas por essa tela.
@@ -19,6 +47,10 @@ Relatórios mostram ocupação atual por turma (matrículas regulares, capacidad
 Continuação: Coordenação pode configurar as duas janelas de frequência e o limite de faltas, com justificativa e auditoria. A conversão por coorte conta leads pela data de cadastro e distingue vínculo com pessoa de matrícula com lead de origem explicitamente informado; vínculos antigos não são inferidos. As migrations `billing.0010` e `billing.0011` não foram aplicadas ao banco operacional. Validação de volume e conferência visual continuam pendentes.
 
 Evasão: cancelamentos novos registram data de efeito; a migration `billing.0012` recupera datas explícitas da auditoria quando disponíveis. O relatório separa cancelamentos antecipados, conclusões normais e registros antigos com vigência ou cancelamento desconhecidos. A migration não foi aplicada ao banco operacional. O indicador e a recuperação de datas requerem validação com dados reais em cópia e testes em PostgreSQL; cancelamento futuro ainda não está implementado.
+
+Cancelamento acadêmico com efeito no dia atual permite à Coordenação selecionar parcelas futuras sem recebimentos, confirmar que se referem a serviços não prestados e registrar justificativa. Parcelas canceladas permanecem no histórico, não aceitam recebimento e são excluídas dos saldos ativos. A migration `billing.0014` não foi aplicada ao banco operacional. Cancelamento com data futura, estorno e revisão dos casos parcialmente pagos ainda estão pendentes; teste direcionado e TypeScript passaram.
+
+Validação adicional: testes em SQLite confirmaram que Secretaria não cancela parcelas, parcelas pagas são recusadas sem cancelar a matrícula, cobranças canceladas aparecem no filtro próprio e não compõem o saldo ativo do período. OpenAPI validado e TypeScript aprovado. Repasses, transferência e demais DN ainda exigem implementação.
 
 Comunicação pode consultar leads em modo de leitura com nome, contato autorizado, origem e situação, sem CPF, anotações ou vínculo ao cadastro acadêmico; pesquisa por CPF e alterações são recusadas pelo backend. Gestão de leads continua com Secretaria/Coordenação. Testes direcionados de acesso passaram em SQLite.
 

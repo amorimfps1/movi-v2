@@ -61,12 +61,16 @@ export const labels: Record<string, string> = {
   eligible: "Liberada",
   blocked: "Bloqueada",
   decision_required: "Decisão pendente",
+  calendar_days: "Proporcional aos dias de serviço",
+  equal_months: "Meses iguais, com rateio por dias",
 };
 export const label = (value: unknown) =>
   labels[String(value)] || String(value ?? "—");
 
 // Codes emitted by core.audit.record; transport and filtering keep these keys.
 export const auditActions: Record<string, string> = {
+  "payout.agreement.created": "Acordo de repasse registrado",
+  "payout.agreement.voided": "Acordo de repasse invalidado",
   "ecowork.order.cancel": "Contratação EcoWork cancelada",
   "ecowork.payment.void": "Lançamento EcoWork invalidado",
   "ecowork.payment.refund": "Devolução EcoWork registrada",

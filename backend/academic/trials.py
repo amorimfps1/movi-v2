@@ -8,6 +8,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from billing.models import Enrollment
+from billing.services import active_on_q
 from core.audit import record
 from core.models import ClassGroup, Instructor, Person
 from core.permissions import IsInternal, is_administrative
@@ -54,8 +55,8 @@ class TrialViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
                 raise ValidationError({'guardian_authorization': 'Registre a autorização do responsável para menor de idade.'})
         if TrialParticipation.objects.filter(person=person, modality=group.modality).exclude(status='cancelled').exists():
             raise ValidationError('Esta pessoa já possui experimental registrada nesta modalidade.')
-        regular = Enrollment.objects.filter(class_group=group, administrative_status='regular', kind='regular', start_date__lte=lesson.date).filter(Q(end_date__isnull=True) | Q(end_date__gte=lesson.date)).count()
-        if Enrollment.objects.filter(class_group=group, student=person, administrative_status='regular', kind='regular', start_date__lte=lesson.date).filter(Q(end_date__isnull=True) | Q(end_date__gte=lesson.date)).exists():
+        regular = Enrollment.objects.filter(class_group=group, kind='regular', start_date__lte=lesson.date).filter(active_on_q(lesson.date)).filter(Q(end_date__isnull=True) | Q(end_date__gte=lesson.date)).count()
+        if Enrollment.objects.filter(class_group=group, student=person, kind='regular', start_date__lte=lesson.date).filter(active_on_q(lesson.date)).filter(Q(end_date__isnull=True) | Q(end_date__gte=lesson.date)).exists():
             raise ValidationError('Esta pessoa já possui matrícula regular vigente na turma nesta data.')
         trial_count = TrialParticipation.objects.filter(lesson=lesson, status__in=['scheduled', 'completed']).count()
         if regular + trial_count >= group.capacity:

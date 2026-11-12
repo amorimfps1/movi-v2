@@ -173,6 +173,187 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/benefits/:
+    get:
+      operationId: benefits_list
+      parameters:
+      - in: query
+        name: modality
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: person
+        schema:
+          type: integer
+      - in: query
+        name: scope
+        schema:
+          type: string
+          enum:
+          - academic
+          - ecowork
+        description: |-
+          * `academic` - Acadêmico
+          * `ecowork` - EcoWork
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - approved
+          - pending
+          - rejected
+        description: |-
+          * `pending` - Pendente
+          * `approved` - Aprovada
+          * `rejected` - Rejeitada
+      tags:
+      - benefits
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBenefitList'
+          description: ''
+    post:
+      operationId: benefits_create
+      tags:
+      - benefits
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Benefit'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Benefit'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Benefit'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Benefit'
+          description: ''
+  /api/benefits/{id}/:
+    get:
+      operationId: benefits_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este benefit authorization.
+        required: true
+      tags:
+      - benefits
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Benefit'
+          description: ''
+  /api/benefits/{id}/approve/:
+    post:
+      operationId: benefits_approve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este benefit authorization.
+        required: true
+      tags:
+      - benefits
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BenefitDecision'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BenefitDecision'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BenefitDecision'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Benefit'
+          description: ''
+  /api/benefits/{id}/reject/:
+    post:
+      operationId: benefits_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este benefit authorization.
+        required: true
+      tags:
+      - benefits
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BenefitDecision'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BenefitDecision'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BenefitDecision'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Benefit'
+          description: ''
   /api/charges/:
     get:
       operationId: charges_list
@@ -1077,6 +1258,221 @@ paths:
               schema:
                 $ref: '#/components/schemas/ContactPreference'
           description: ''
+  /api/ecowork/catalogs/:
+    get:
+      operationId: ecowork_catalogs_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEcoWorkCatalogList'
+          description: ''
+    post:
+      operationId: ecowork_catalogs_create
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EcoWorkCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EcoWorkCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EcoWorkCatalog'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkCatalog'
+          description: ''
+  /api/ecowork/catalogs/{id}/:
+    get:
+      operationId: ecowork_catalogs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este catalog version.
+        required: true
+      tags:
+      - ecowork
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkCatalog'
+          description: ''
+    patch:
+      operationId: ecowork_catalogs_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este catalog version.
+        required: true
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEcoWorkCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEcoWorkCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEcoWorkCatalog'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkCatalog'
+          description: ''
+  /api/ecowork/catalogs/{id}/end/:
+    post:
+      operationId: ecowork_catalogs_end_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este catalog version.
+        required: true
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EcoWorkEndCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EcoWorkEndCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EcoWorkEndCatalog'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkCatalog'
+          description: ''
+  /api/ecowork/catalogs/{id}/preview/:
+    post:
+      operationId: ecowork_catalogs_preview_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este catalog version.
+        required: true
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EcoWorkCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EcoWorkCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EcoWorkCatalog'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkCatalog'
+          description: ''
+  /api/ecowork/catalogs/{id}/publish/:
+    post:
+      operationId: ecowork_catalogs_publish_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este catalog version.
+        required: true
+      tags:
+      - ecowork
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EcoWorkCatalog'
+          description: ''
   /api/ecowork/charges/:
     get:
       operationId: ecowork_charges_list
@@ -1557,16 +1953,6 @@ paths:
       operationId: enrollments_list
       parameters:
       - in: query
-        name: administrative_status
-        schema:
-          type: string
-          enum:
-          - cancelled
-          - regular
-        description: |-
-          * `regular` - Regular
-          * `cancelled` - Cancelada
-      - in: query
         name: class_group
         schema:
           type: integer
@@ -1602,14 +1988,6 @@ paths:
         name: plan
         schema:
           type: string
-          enum:
-          - monthly
-          - quarterly
-          - yearly
-        description: |-
-          * `monthly` - Mensal
-          * `quarterly` - Trimestral
-          * `yearly` - Anual
       - name: search
         required: false
         in: query
@@ -1756,13 +2134,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Cancel'
+              $ref: '#/components/schemas/EnrollmentCancel'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Cancel'
+              $ref: '#/components/schemas/EnrollmentCancel'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Cancel'
+              $ref: '#/components/schemas/EnrollmentCancel'
         required: true
       security:
       - cookieAuth: []
@@ -1777,16 +2155,6 @@ paths:
     get:
       operationId: enrollments_conditions_list
       parameters:
-      - in: query
-        name: administrative_status
-        schema:
-          type: string
-          enum:
-          - cancelled
-          - regular
-        description: |-
-          * `regular` - Regular
-          * `cancelled` - Cancelada
       - in: query
         name: class_group
         schema:
@@ -1829,14 +2197,6 @@ paths:
         name: plan
         schema:
           type: string
-          enum:
-          - monthly
-          - quarterly
-          - yearly
-        description: |-
-          * `monthly` - Mensal
-          * `quarterly` - Trimestral
-          * `yearly` - Anual
       - name: search
         required: false
         in: query
@@ -1943,16 +2303,6 @@ paths:
       operationId: enrollments_suspensions_list
       parameters:
       - in: query
-        name: administrative_status
-        schema:
-          type: string
-          enum:
-          - cancelled
-          - regular
-        description: |-
-          * `regular` - Regular
-          * `cancelled` - Cancelada
-      - in: query
         name: class_group
         schema:
           type: integer
@@ -1994,14 +2344,6 @@ paths:
         name: plan
         schema:
           type: string
-          enum:
-          - monthly
-          - quarterly
-          - yearly
-        description: |-
-          * `monthly` - Mensal
-          * `quarterly` - Trimestral
-          * `yearly` - Anual
       - name: search
         required: false
         in: query
@@ -2027,16 +2369,6 @@ paths:
       operationId: enrollments_suspensions_create
       parameters:
       - in: query
-        name: administrative_status
-        schema:
-          type: string
-          enum:
-          - cancelled
-          - regular
-        description: |-
-          * `regular` - Regular
-          * `cancelled` - Cancelada
-      - in: query
         name: class_group
         schema:
           type: integer
@@ -2078,14 +2410,6 @@ paths:
         name: plan
         schema:
           type: string
-          enum:
-          - monthly
-          - quarterly
-          - yearly
-        description: |-
-          * `monthly` - Mensal
-          * `quarterly` - Trimestral
-          * `yearly` - Anual
       - name: search
         required: false
         in: query
@@ -2237,6 +2561,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/Catalog'
           description: ''
+  /api/financial-catalogs/{id}/end/:
+    post:
+      operationId: financial_catalogs_end_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este financial catalog
+          version.
+        required: true
+      tags:
+      - financial-catalogs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EndCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EndCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EndCatalog'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+          description: ''
   /api/financial-catalogs/{id}/preview/:
     post:
       operationId: financial_catalogs_preview_create
@@ -2304,6 +2662,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Catalog'
+          description: ''
+  /api/financial-options/:
+    get:
+      operationId: financial_options_retrieve
+      parameters:
+      - in: query
+        name: 'on'
+        schema:
+          type: string
+          format: date
+      tags:
+      - financial-options
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialOptions'
           description: ''
   /api/instructors/:
     get:
@@ -2672,6 +3050,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Lead'
+          description: ''
+  /api/leads/{id}/review-retention/:
+    post:
+      operationId: leads_review_retention_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este lead.
+        required: true
+      tags:
+      - leads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadRetentionReviewed'
+          description: ''
+  /api/leads/retention-review/:
+    get:
+      operationId: leads_retention_review_retrieve
+      tags:
+      - leads
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadRetentionReviewList'
           description: ''
   /api/lessons/:
     get:
@@ -3160,6 +3585,90 @@ paths:
               schema:
                 $ref: '#/components/schemas/Modality'
           description: ''
+  /api/payment-refunds/:
+    get:
+      operationId: payment_refunds_list
+      parameters:
+      - in: query
+        name: method
+        schema:
+          type: string
+          enum:
+          - card
+          - cash
+          - other
+          - pix
+          - transfer
+        description: |-
+          * `pix` - Pix
+          * `cash` - Dinheiro
+          * `card` - Cartão
+          * `transfer` - Transferência
+          * `other` - Outro
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - in: query
+        name: payment
+        schema:
+          type: integer
+      - in: query
+        name: payment__charge__enrollment
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - payment-refunds
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPaymentRefundList'
+          description: ''
+  /api/payment-refunds/{id}/:
+    get:
+      operationId: payment_refunds_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment refund.
+        required: true
+      tags:
+      - payment-refunds
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRefund'
+          description: ''
   /api/payments/:
     get:
       operationId: payments_list
@@ -3255,6 +3764,200 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/payments/{id}/refund/:
+    post:
+      operationId: payments_refund_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment.
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRefundRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PaymentRefundRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentRefundRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRefund'
+          description: ''
+  /api/payments/{id}/void/:
+    post:
+      operationId: payments_void_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este payment.
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Cancel'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/payout-agreements/:
+    get:
+      operationId: payout_agreements_list
+      parameters:
+      - in: query
+        name: instructor
+        schema:
+          type: integer
+      - in: query
+        name: modality
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Número de resultados a serem retornados por página.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - payout-agreements
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPayoutAgreementList'
+          description: ''
+    post:
+      operationId: payout_agreements_create
+      tags:
+      - payout-agreements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutAgreement'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PayoutAgreement'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PayoutAgreement'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAgreement'
+          description: ''
+  /api/payout-agreements/{id}/:
+    get:
+      operationId: payout_agreements_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este instructor payout
+          agreement.
+        required: true
+      tags:
+      - payout-agreements
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAgreement'
+          description: ''
+  /api/payout-agreements/{id}/void/:
+    post:
+      operationId: payout_agreements_void_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este instructor payout
+          agreement.
+        required: true
+      tags:
+      - payout-agreements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reason'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reason'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAgreement'
           description: ''
   /api/people/:
     get:
@@ -3496,6 +4199,7 @@ paths:
           enum:
           - charges
           - payments
+          - refunds
           - students
       - in: query
         name: search
@@ -4518,7 +5222,11 @@ components:
         instructor_id:
           type: integer
           minimum: 1
+        reason:
+          type: string
+          maxLength: 2000
       required:
+      - reason
       - role
     AccessRoles:
       type: object
@@ -4542,14 +5250,14 @@ components:
         * `pending` - Pendente
         * `approved` - Aprovado
         * `rejected` - Rejeitado
-    AdministrativeStatusEnum:
+    AllocationMethodEnum:
       enum:
-      - regular
-      - cancelled
+      - calendar_days
+      - equal_months
       type: string
       description: |-
-        * `regular` - Regular
-        * `cancelled` - Cancelada
+        * `calendar_days` - Dias de serviço
+        * `equal_months` - Meses de contrato
     Association:
       type: object
       properties:
@@ -4731,6 +5439,143 @@ components:
       - reason
       - target_id
       - target_type
+    AvailablePlan:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        months:
+          type: integer
+        installments:
+          type: array
+          items:
+            type: integer
+      required:
+      - code
+      - installments
+      - months
+      - name
+    Benefit:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        scope:
+          $ref: '#/components/schemas/ScopeEnum'
+        person:
+          type: integer
+        person_name:
+          type: string
+          readOnly: true
+        modality:
+          type: integer
+          nullable: true
+        modality_name:
+          type: string
+          readOnly: true
+          nullable: true
+        plan:
+          type: string
+          maxLength: 40
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        kind:
+          $ref: '#/components/schemas/BenefitKindEnum'
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        fee_waiver:
+          type: boolean
+        reason:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BenefitStatusEnum'
+          readOnly: true
+        requested_by:
+          type: integer
+          readOnly: true
+        decided_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        decision_reason:
+          type: string
+          readOnly: true
+        institutional_reference:
+          type: string
+          readOnly: true
+        approval_limit_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - approval_limit_percent
+      - created_at
+      - decided_at
+      - decided_by
+      - decision_reason
+      - ends_on
+      - id
+      - institutional_reference
+      - kind
+      - modality_name
+      - person
+      - person_name
+      - reason
+      - requested_by
+      - starts_on
+      - status
+      - value
+    BenefitDecision:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+        institutional_reference:
+          type: string
+          default: ''
+          maxLength: 250
+      required:
+      - reason
+    BenefitKindEnum:
+      enum:
+      - percent
+      - fixed
+      type: string
+      description: |-
+        * `percent` - Percentual
+        * `fixed` - Valor fixo
+    BenefitStatusEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pendente
+        * `approved` - Aprovada
+        * `rejected` - Rejeitada
     BlankEnum:
       enum:
       - ''
@@ -4764,7 +5609,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/CatalogStatusEnum'
+          - $ref: '#/components/schemas/StatusF0eEnum'
           readOnly: true
         effective_from:
           type: string
@@ -4799,14 +5644,6 @@ components:
       - published_by
       - status
       - version
-    CatalogStatusEnum:
-      enum:
-      - draft
-      - published
-      type: string
-      description: |-
-        * `draft` - Rascunho
-        * `published` - Publicado
     CategoryEnum:
       enum:
       - tuition
@@ -4869,8 +5706,23 @@ components:
           type: string
           format: date-time
           readOnly: true
+        cancelled_on:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        cancelled_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        cancellation_reason:
+          type: string
+          readOnly: true
       required:
       - amount
+      - cancellation_reason
+      - cancelled_by
+      - cancelled_on
       - category
       - class_name
       - created_at
@@ -4914,9 +5766,13 @@ components:
           maxLength: 120
         capacity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 1
-          format: int64
+        physical_capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+          nullable: true
         active:
           type: boolean
         allows_trial:
@@ -4987,7 +5843,10 @@ components:
           format: date
         plan:
           type: string
-          maxLength: 12
+          maxLength: 40
+        plan_name:
+          type: string
+          readOnly: true
         actor:
           type: integer
         reason:
@@ -5004,6 +5863,7 @@ components:
       - enrollment
       - id
       - plan
+      - plan_name
     Condominium:
       type: object
       properties:
@@ -5131,6 +5991,52 @@ components:
       required:
       - decisions
       - detail
+    EcoWorkCatalog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusF0eEnum'
+          readOnly: true
+        effective_from:
+          type: string
+          format: date
+        effective_until:
+          type: string
+          format: date
+          nullable: true
+        configuration: {}
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - actor
+      - created_at
+      - effective_from
+      - id
+      - published_at
+      - published_by
+      - status
+      - version
     EcoWorkCharge:
       type: object
       properties:
@@ -5179,6 +6085,18 @@ components:
       - payment
       - payments
       - status
+    EcoWorkEndCatalog:
+      type: object
+      properties:
+        effective_until:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - effective_until
+      - reason
     EcoWorkPayment:
       type: object
       properties:
@@ -5272,6 +6190,18 @@ components:
       required:
       - ends_on
       - reason
+    EndCatalog:
+      type: object
+      properties:
+        effective_until:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+      - effective_until
+      - reason
     Enrollment:
       type: object
       properties:
@@ -5292,14 +6222,17 @@ components:
           type: string
           format: date
         plan:
-          $ref: '#/components/schemas/PlanEnum'
+          type: string
+          maxLength: 40
+        plan_name:
+          type: string
+          readOnly: true
         amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         administrative_status:
-          allOf:
-          - $ref: '#/components/schemas/AdministrativeStatusEnum'
+          type: string
           readOnly: true
         cancelled_on:
           type: string
@@ -5307,7 +6240,7 @@ components:
           readOnly: true
           nullable: true
         kind:
-          $ref: '#/components/schemas/KindEnum'
+          $ref: '#/components/schemas/EnrollmentKindEnum'
         created_at:
           type: string
           format: date-time
@@ -5330,9 +6263,8 @@ components:
           $ref: '#/components/schemas/PaymentMethodEnum'
         installments:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 32767
           minimum: 0
-          format: int64
         fee_amount:
           type: string
           format: decimal
@@ -5351,8 +6283,18 @@ components:
         source_lead:
           type: integer
           nullable: true
+        capacity_exception_reason:
+          type: string
+          writeOnly: true
+          maxLength: 2000
+        benefit:
+          type: integer
+          nullable: true
+        benefit_snapshot:
+          readOnly: true
       required:
       - administrative_status
+      - benefit_snapshot
       - cancelled_on
       - class_group
       - class_name
@@ -5364,11 +6306,31 @@ components:
       - financial_catalog
       - id
       - plan
+      - plan_name
       - renewed_from
       - schedule
       - start_date
       - student
       - student_name
+    EnrollmentCancel:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+        effective_on:
+          type: string
+          format: date
+        charge_ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        service_unprovided_confirmed:
+          type: boolean
+          default: false
+      required:
+      - reason
     EnrollmentFeeKindEnum:
       enum:
       - standard
@@ -5377,6 +6339,28 @@ components:
       description: |-
         * `standard` - Convencional
         * `rhythmic` - Ginástica Rítmica
+    EnrollmentKindEnum:
+      enum:
+      - regular
+      - trial
+      type: string
+      description: |-
+        * `regular` - Comum
+        * `trial` - Experimental
+    FinancialOptions:
+      type: object
+      properties:
+        plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailablePlan'
+        methods:
+          type: array
+          items:
+            type: string
+      required:
+      - methods
+      - plans
     FinancialReason:
       type: object
       properties:
@@ -5505,14 +6489,6 @@ components:
       - id
       - name
       - user
-    KindEnum:
-      enum:
-      - regular
-      - trial
-      type: string
-      description: |-
-        * `regular` - Comum
-        * `trial` - Experimental
     Lead:
       type: object
       properties:
@@ -5556,6 +6532,23 @@ components:
       - id
       - name
       - student
+    LeadRetentionReviewList:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - results
+    LeadRetentionReviewed:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     LeadStatusEnum:
       enum:
       - new
@@ -5760,7 +6753,7 @@ components:
         price_category:
           nullable: true
           minimum: 0
-          maximum: 9223372036854775807
+          maximum: 32767
           oneOf:
           - $ref: '#/components/schemas/PriceCategoryEnum'
           - $ref: '#/components/schemas/NullEnum'
@@ -5922,15 +6915,28 @@ components:
         cancellation_mode:
           type: string
           readOnly: true
+        catalog:
+          type: integer
+          readOnly: true
+          nullable: true
+        benefit:
+          type: integer
+          readOnly: true
+          nullable: true
+        benefit_snapshot:
+          readOnly: true
       required:
       - actor
       - association
       - base_price
+      - benefit
+      - benefit_snapshot
       - billing_mode
       - cancellation_mode
       - cancellation_reason
       - cancelled_at
       - cancelled_by
+      - catalog
       - charges
       - coverage_status
       - created_at
@@ -5964,7 +6970,8 @@ components:
         person:
           type: integer
         product:
-          $ref: '#/components/schemas/ProductEnum'
+          type: string
+          maxLength: 20
         quantity:
           type: integer
           maximum: 100
@@ -5987,6 +6994,9 @@ components:
         request_key:
           type: string
           format: uuid
+        benefit:
+          type: integer
+          nullable: true
       required:
       - billing_mode
       - expected_total
@@ -6050,6 +7060,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Audit'
+    PaginatedBenefitList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Benefit'
     PaginatedCatalogList:
       type: object
       required:
@@ -6211,6 +7244,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ContactPreference'
+    PaginatedEcoWorkCatalogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EcoWorkCatalog'
     PaginatedEcoWorkChargeList:
       type: object
       required:
@@ -6418,6 +7474,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Payment'
+    PaginatedPaymentRefundList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRefund'
+    PaginatedPayoutAgreementList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayoutAgreement'
     PaginatedPersonList:
       type: object
       required:
@@ -6567,7 +7669,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/CatalogStatusEnum'
+          - $ref: '#/components/schemas/StatusF0eEnum'
           readOnly: true
         effective_from:
           type: string
@@ -6627,9 +7729,13 @@ components:
           maxLength: 120
         capacity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 1
-          format: int64
+        physical_capacity:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+          nullable: true
         active:
           type: boolean
         allows_trial:
@@ -6649,6 +7755,43 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedEcoWorkCatalog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusF0eEnum'
+          readOnly: true
+        effective_from:
+          type: string
+          format: date
+        effective_until:
+          type: string
+          format: date
+          nullable: true
+        configuration: {}
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
     PatchedEnrollment:
       type: object
       properties:
@@ -6669,14 +7812,17 @@ components:
           type: string
           format: date
         plan:
-          $ref: '#/components/schemas/PlanEnum'
+          type: string
+          maxLength: 40
+        plan_name:
+          type: string
+          readOnly: true
         amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         administrative_status:
-          allOf:
-          - $ref: '#/components/schemas/AdministrativeStatusEnum'
+          type: string
           readOnly: true
         cancelled_on:
           type: string
@@ -6684,7 +7830,7 @@ components:
           readOnly: true
           nullable: true
         kind:
-          $ref: '#/components/schemas/KindEnum'
+          $ref: '#/components/schemas/EnrollmentKindEnum'
         created_at:
           type: string
           format: date-time
@@ -6707,9 +7853,8 @@ components:
           $ref: '#/components/schemas/PaymentMethodEnum'
         installments:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 32767
           minimum: 0
-          format: int64
         fee_amount:
           type: string
           format: decimal
@@ -6728,6 +7873,15 @@ components:
         source_lead:
           type: integer
           nullable: true
+        capacity_exception_reason:
+          type: string
+          writeOnly: true
+          maxLength: 2000
+        benefit:
+          type: integer
+          nullable: true
+        benefit_snapshot:
+          readOnly: true
     PatchedInstructor:
       type: object
       properties:
@@ -6861,7 +8015,7 @@ components:
         price_category:
           nullable: true
           minimum: 0
-          maximum: 9223372036854775807
+          maximum: 32767
           oneOf:
           - $ref: '#/components/schemas/PriceCategoryEnum'
           - $ref: '#/components/schemas/NullEnum'
@@ -6910,20 +8064,26 @@ components:
           readOnly: true
         charge:
           type: integer
+          readOnly: true
         amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
         paid_on:
           type: string
           format: date
+          readOnly: true
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          readOnly: true
         reference:
           type: string
-          maxLength: 160
+          readOnly: true
         actor:
           type: integer
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -6934,6 +8094,23 @@ components:
         category:
           type: string
           readOnly: true
+        voided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        voided_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        void_reason:
+          type: string
+          readOnly: true
+        refunds:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRefund'
+          readOnly: true
       required:
       - actor
       - amount
@@ -6943,7 +8120,12 @@ components:
       - id
       - method
       - paid_on
+      - reference
+      - refunds
       - student_name
+      - void_reason
+      - voided_at
+      - voided_by
     PaymentMethodEnum:
       enum:
       - card
@@ -6952,6 +8134,144 @@ components:
       description: |-
         * `card` - card
         * `boleto` - boleto
+    PaymentRefund:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        payment:
+          type: integer
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        refunded_on:
+          type: string
+          format: date
+          readOnly: true
+        method:
+          allOf:
+          - $ref: '#/components/schemas/MethodEnum'
+          readOnly: true
+        reference:
+          type: string
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor
+      - amount
+      - created_at
+      - id
+      - method
+      - payment
+      - reason
+      - reference
+      - refunded_on
+    PaymentRefundRequest:
+      type: object
+      properties:
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        refunded_on:
+          type: string
+          format: date
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        reference:
+          type: string
+          default: ''
+          maxLength: 160
+        reason:
+          type: string
+          maxLength: 2000
+        request_key:
+          type: string
+          format: uuid
+      required:
+      - amount
+      - method
+      - reason
+      - refunded_on
+      - request_key
+    PayoutAgreement:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        instructor:
+          type: integer
+        instructor_name:
+          type: string
+          readOnly: true
+        modality:
+          type: integer
+        modality_name:
+          type: string
+          readOnly: true
+        effective_from:
+          type: string
+          format: date
+        effective_until:
+          type: string
+          format: date
+        percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        allocation_method:
+          $ref: '#/components/schemas/AllocationMethodEnum'
+        reason:
+          type: string
+        actor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        voided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        voided_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        void_reason:
+          type: string
+          readOnly: true
+      required:
+      - actor
+      - allocation_method
+      - created_at
+      - effective_from
+      - effective_until
+      - id
+      - instructor
+      - instructor_name
+      - modality
+      - modality_name
+      - percentage
+      - reason
+      - void_reason
+      - voided_at
+      - voided_by
     PendingDecision:
       type: object
       properties:
@@ -7039,16 +8359,6 @@ components:
       - paid
       - refunded
       - total
-    PlanEnum:
-      enum:
-      - monthly
-      - quarterly
-      - yearly
-      type: string
-      description: |-
-        * `monthly` - Mensal
-        * `quarterly` - Trimestral
-        * `yearly` - Anual
     Policies:
       type: object
       properties:
@@ -7112,22 +8422,6 @@ components:
       - months
       - name
       - price
-    ProductEnum:
-      enum:
-      - hour
-      - half_day
-      - day
-      - monthly
-      - semiannual
-      - annual
-      type: string
-      description: |-
-        * `hour` - hour
-        * `half_day` - half_day
-        * `day` - day
-        * `monthly` - monthly
-        * `semiannual` - semiannual
-        * `annual` - annual
     PurposeEnum:
       enum:
       - commercial
@@ -7164,9 +8458,11 @@ components:
         quoted_on:
           type: string
           format: date
+        benefit_snapshot: {}
       required:
       - association
       - base_price
+      - benefit_snapshot
       - discount_percent
       - person
       - product
@@ -7180,7 +8476,11 @@ components:
         person:
           type: integer
         product:
-          $ref: '#/components/schemas/ProductEnum'
+          type: string
+          maxLength: 20
+        benefit:
+          type: integer
+          nullable: true
       required:
       - person
       - product
@@ -7460,6 +8760,22 @@ components:
       required:
       - enrollment
       - student_name
+    ScopeEnum:
+      enum:
+      - academic
+      - ecowork
+      type: string
+      description: |-
+        * `academic` - Acadêmico
+        * `ecowork` - EcoWork
+    StatusF0eEnum:
+      enum:
+      - draft
+      - published
+      type: string
+      description: |-
+        * `draft` - Rascunho
+        * `published` - Publicado
     Summary:
       type: object
       properties:
@@ -7492,6 +8808,10 @@ components:
         converted_enrollments:
           type: integer
         received:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        refunded:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$

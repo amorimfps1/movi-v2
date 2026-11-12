@@ -110,9 +110,9 @@ export function Reports() {
                   </div>
                   <div className="report-financial-main">
                     <div>
-                      <span>Recebido no período</span>
+                      <span>Recebido líquido no período</span>
                       <strong>{money(query.data.received)}</strong>
-                      <small>Recebimentos pela data de pagamento</small>
+                      <small>Recebimentos por data de pagamento, menos devoluções por data de devolução.</small>
                       <Link
                         className="text-link"
                         to={`/recebimentos?${new URLSearchParams(period)}`}
@@ -121,6 +121,7 @@ export function Reports() {
                       </Link>
                     </div>
                     <dl>
+                      <div><dt>Devolvido no período</dt><dd>{money(query.data.refunded ?? '0.00')}</dd></div>
                       <div>
                         <dt>Previsto</dt>
                         <dd>{money(query.data.expected)}</dd>
@@ -245,7 +246,7 @@ export function Reports() {
                     <h2>Levar os registros para conferência</h2>
                     <p>
                       CSV inclui todos os resultados autorizados. Cobranças usam
-                      vencimento; recebimentos usam pagamento. Alunos refletem o
+                      vencimento; recebimentos usam pagamento e devoluções usam a data de devolução. Alunos refletem o
                       cadastro atual.
                     </p>
                   </div>
@@ -258,6 +259,7 @@ export function Reports() {
                   >
                     <option value="charges">Cobranças do período</option>
                     <option value="payments">Recebimentos do período</option>
+                    <option value="refunds">Devoluções do período</option>
                     <option value="students">Todos os alunos</option>
                   </select>
                   <Button

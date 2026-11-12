@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { post } from './api';
+import { optionsFor, post } from './api';
 import { useApi } from './query';
 import { money, date, today } from './format';
 import { Badge, Button, Empty, ErrorNotice, Field, Loading, Modal, Notice, PageTitle, Pagination } from './ui';
@@ -13,9 +13,9 @@ import { FinancialAction, FinancialHistory, type EcoPayment } from './EcoWorkFin
 
 type Person = { id: number; name: string; phone: string };
 type Product = { code: string; name: string; price: string; months: number; max_installments: number };
-type Quote = { total: string; base_price: string; discount_percent: number; reason: string };
+type Quote = { total: string; base_price: string; discount_percent: number; reason: string; benefit_snapshot?: { discount?: string; after_resident?: string } };
 type Charge = { id: number; number: number; amount: string; due_date: string; status: string; payment: EcoPayment | null; payments: EcoPayment[] };
-type Order = { id: number; person: number; person_name: string; product_name: string; total: string; billing_mode: string; installments: number; discount_percent: number; starts_on: string | null; ends_on: string | null; coverage_status: string; cancelled_at?: string | null; cancelled_by?: number; cancellation_reason?: string; cancellation_mode?: string; charges: Charge[] };
+type Order = { id: number; person: number; person_name: string; product_name: string; total: string; billing_mode: string; installments: number; discount_percent: number; benefit_snapshot?: { benefit?: number; discount?: string; after_resident?: string }; starts_on: string | null; ends_on: string | null; coverage_status: string; cancelled_at?: string | null; cancelled_by?: number; cancellation_reason?: string; cancellation_mode?: string; charges: Charge[] };
 const coverage: Record<string, string> = { awaiting_payment: 'Aguardando pagamento', active: 'Plano vigente', expired: 'Plano encerrado', paid_use: 'Avulso pago', cancelled: 'Contrata??o cancelada' };
 
 export const personSpec: ResourceSpec = {
@@ -89,10 +89,11 @@ export function EcoWork() {
       const overdue = open.some(c => c.status === 'overdue');
       return <article className="ecowork-order" key={order.id}>
         <header><div><h2><Link to={`/pessoas/${order.person}`}>{order.person_name}</Link></h2><p>{order.product_name} · contratação #{order.id}</p></div><Badge value={order.coverage_status === 'active' ? 'regular' : 'neutral'}>{coverage[order.coverage_status]}</Badge></header>
-        {order.cancelled_at ? <Notice>Cancelada em {date(order.cancelled_at)} por #{order.cancelled_by}. {order.cancellation_mode === 'keep_unpaid' ? 'Cobran?as n?o pagas mantidas.' : 'Cobran?as n?o pagas canceladas.'} Motivo: {order.cancellation_reason}</Notice> : <Button variant="secondary" onClick={() => setFinancialAction({ action: 'cancel', order })}>Cancelar contrata??o</Button>}
+        {order.cancelled_at ? <Notice>Cancelada em {date(order.cancelled_at)} por #{order.cancelled_by}. {order.cancellation_mode === 'keep_unpaid' ? 'Cobran?as n?o pagas mantidas.' : 'Cobran?as n?o pagas canceladas.'} Motivo: {order.cancellation_reason}</Notice> : <Button variant="secondary" onClick={() => setFinancialAction({ action: 'cancel', order })}>Cancelar contrato</Button>}
         <dl className="ecowork-facts">
           <div><dt>Total contratado</dt><dd>{money(order.total)}</dd></div>
           <div><dt>Desconto de associado</dt><dd>{order.discount_percent}%</dd></div>
+          {order.benefit_snapshot?.benefit && <div><dt>Benefício individual #{order.benefit_snapshot.benefit}</dt><dd>{money(order.benefit_snapshot.discount)} sobre {money(order.benefit_snapshot.after_resident)} após desconto de morador</dd></div>}
           <div><dt>Vigência</dt><dd>{order.starts_on ? `Início: ${date(order.starts_on)}${order.ends_on ? ` · encerra em ${date(order.ends_on)}` : ''}` : order.cancelled_at ? 'Contrata??o cancelada' : 'Inicia no primeiro pagamento'}</dd></div>
           <div><dt>Saldo a pagar pelo cliente</dt><dd>{money(open.reduce((sum, c) => sum + Number(c.amount), 0))}{overdue && <Badge value="overdue">Há vencimentos em atraso</Badge>}</dd></div>
         </dl>
@@ -121,6 +122,7 @@ function CreateOrder({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [person, setPerson] = useState<Person>();
   const [product, setProduct] = useState('monthly');
+  const [benefit, setBenefit] = useState('');
   const [mode, setMode] = useState('cash');
   const [installments, setInstallments] = useState(1);
   const [due, setDue] = useState(today());
@@ -129,28 +131,39 @@ function CreateOrder({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<unknown>();
   const people = useApi<Page<Person>>(`people/?archived=false&search=${encodeURIComponent(search)}`);
   const products = useApi<Product[]>('ecowork/products/');
+  useEffect(() => {
+    if (products.data && !products.data.some((item) => item.code === product)) {
+      setProduct(products.data[0]?.code || '');
+      setMode('cash'); setInstallments(1); setKey(crypto.randomUUID());
+    }
+  }, [products.data, product]);
   const selected = products.data?.find(p => p.code === product);
-  const pricing = useQuery({ queryKey: ['ecowork-quote', person?.id, product], queryFn: () => post<Quote>('ecowork/quote/', { person: person!.id, product }), enabled: !!person, retry: false });
+  const benefits = useQuery({ queryKey: ['eco-benefits', person?.id], queryFn: () => optionsFor(`benefits/?person=${person!.id}&scope=ecowork&status=approved`), enabled: !!person, retry: false });
+  const pricing = useQuery({ queryKey: ['ecowork-quote', person?.id, product, benefit], queryFn: () => post<Quote>('ecowork/quote/', { person: person!.id, product, ...(benefit ? { benefit: Number(benefit) } : {}) }), enabled: !!person && !!selected, retry: false });
   const change = () => { setKey(crypto.randomUUID()); setError(undefined); };
   return <Modal open title="Contratar plano ou avulso" onClose={() => !pending && onClose()}>
     <form onSubmit={async e => { e.preventDefault(); if (!person || !pricing.data || pending) return; setPending(true); setError(undefined); try {
-      await post('ecowork/orders/', { person: person.id, product, quantity: 1, billing_mode: mode, installments, first_due: due, expected_total: pricing.data.total, request_key: key });
+      const waived = Number(pricing.data.total) === 0;
+      await post('ecowork/orders/', { person: person.id, product, quantity: 1, billing_mode: waived ? 'cash' : mode, installments: waived ? 1 : installments, first_due: waived ? today() : due, expected_total: pricing.data.total, request_key: key, ...(benefit ? { benefit: Number(benefit) } : {}) });
       await cache.invalidateQueries(); onClose();
     } catch (err) { setError(err); } finally { setPending(false); } }}>
       <fieldset disabled={pending} className="ecowork-fields">
         <Field label="Buscar pessoa"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Digite o nome" /></Field>
         <ErrorNotice error={people.error} />
-        <Field label="Pessoa"><select required value={person?.id || ''} onChange={e => { setPerson(people.data?.results.find(p => p.id === Number(e.target.value))); change(); }}><option value="">Selecione uma pessoa</option>{person && !people.data?.results.some(p => p.id === person.id) && <option value={person.id}>{person.name}</option>}{people.data?.results.map(p => <option key={p.id} value={p.id}>{p.name} · {p.phone || `#${p.id}`}</option>)}</select></Field>
+        <Field label="Pessoa"><select required value={person?.id || ''} onChange={e => { setPerson(people.data?.results.find(p => p.id === Number(e.target.value))); setBenefit(''); change(); }}><option value="">Selecione uma pessoa</option>{person && !people.data?.results.some(p => p.id === person.id) && <option value={person.id}>{person.name}</option>}{people.data?.results.map(p => <option key={p.id} value={p.id}>{p.name} · {p.phone || `#${p.id}`}</option>)}</select></Field>
         <Link to="/pessoas">Cadastrar uma pessoa</Link>
         <ErrorNotice error={products.error} />
-        <Field label="Produto"><select value={product} onChange={e => { setProduct(e.target.value); setMode('cash'); setInstallments(1); change(); }}>{products.data?.map(p => <option key={p.code} value={p.code}>{p.name} · {money(p.price)}</option>)}</select></Field>
-        <Field label="Forma de cobrança"><select value={mode} onChange={e => { setMode(e.target.value); setInstallments(1); change(); }}><option value="cash">À vista</option>{!!selected && selected.max_installments > 1 && <><option value="office">Parcelas pela secretaria</option><option value="card">Cartão parcelado</option></>}</select></Field>
+        <Field label="Produto"><select value={product} onChange={e => { setProduct(e.target.value); setBenefit(''); setMode('cash'); setInstallments(1); change(); }}>{products.data?.map(p => <option key={p.code} value={p.code}>{p.name} · {money(p.price)}</option>)}</select></Field>
+        {!!selected?.months && person && <Field label="Benefício individual aprovado"><select value={benefit} onChange={e => { setBenefit(e.target.value); change(); }}><option value="">Nenhum</option>{benefits.data?.map(item => <option key={Number(item.id)} value={String(item.id)}>#{String(item.id)} · {String(item.value)}{item.kind === 'percent' ? '%' : ' reais'} · até {date(item.ends_on)}</option>)}</select></Field>}
+        <ErrorNotice error={benefits.error} />
+        {(!pricing.data || Number(pricing.data.total) !== 0) && <><Field label="Forma de cobrança"><select value={mode} onChange={e => { setMode(e.target.value); setInstallments(1); change(); }}><option value="cash">À vista</option>{!!selected && selected.max_installments > 1 && <><option value="office">Parcelas pela secretaria</option><option value="card">Cartão parcelado</option></>}</select></Field>
         {mode !== 'cash' && <Field label="Número de parcelas"><input type="number" required min={1} max={selected?.max_installments || 1} value={installments} onChange={e => { setInstallments(Number(e.target.value)); change(); }} /></Field>}
-        <Field label="Primeiro vencimento"><input type="date" required value={due} onChange={e => { setDue(e.target.value); change(); }} /></Field>
+        <Field label="Primeiro vencimento"><input type="date" required value={due} onChange={e => { setDue(e.target.value); change(); }} /></Field></>}
         <ErrorNotice error={pricing.error} />
         {pricing.isFetching && person && <Loading />}
-        {pricing.data && <div className="ecowork-price"><span>Total contratado</span><strong>{money(pricing.data.total)}</strong><small>{pricing.data.discount_percent ? '50% de desconto de associado' : pricing.data.reason}</small></div>}
-        <Notice>{selected?.months ? 'A vigência começa na confirmação do primeiro pagamento. Contratar ainda não significa pagar.' : 'Confirme o pagamento integral antes do uso do espaço.'}</Notice>
+        {pricing.data && <div className="ecowork-price"><span>Total contratado</span><strong>{money(pricing.data.total)}</strong><small>{pricing.data.discount_percent ? `${pricing.data.discount_percent}% de desconto de associado` : pricing.data.reason}</small></div>}
+        {pricing.data?.benefit_snapshot?.discount && <p>Benefício individual: {money(pricing.data.benefit_snapshot.discount)} sobre {money(pricing.data.benefit_snapshot.after_resident)} após o desconto de morador.</p>}
+        <Notice>{pricing.data && Number(pricing.data.total) === 0 ? 'O plano começa na contratação, sem cobrança ou pagamento.' : selected?.months ? 'A vigência começa na confirmação do primeiro pagamento. Contratar ainda não significa pagar.' : 'Confirme o pagamento integral antes do uso do espaço.'}</Notice>
         <ErrorNotice error={error} />
         <div className="form-actions"><Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button><Button disabled={!person || !pricing.data || pricing.isFetching || pricing.isError || !selected} type="submit">{pending ? 'Registrando…' : 'Confirmar contratação'}</Button></div>
       </fieldset>

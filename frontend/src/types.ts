@@ -59,6 +59,7 @@ export type Summary = {
   classes: number;
   pending_users: number;
   received: string;
+  refunded?: string;
   expected: string;
   outstanding: string;
   overdue: string;

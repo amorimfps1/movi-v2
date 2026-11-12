@@ -5,6 +5,12 @@ import re
 
 def validate_academic_catalog(configuration):
     errors = []
+    try:
+        limit = Decimal(str(configuration.get('discount_limit_percent', '20.00')))
+        if not limit.is_finite() or limit < 0 or limit > 100 or limit.as_tuple().exponent < -2:
+            errors.append('Limite de desconto deve estar entre 0 e 100, com até duas casas decimais.')
+    except (InvalidOperation, ValueError):
+        errors.append('Limite de desconto inválido.')
     due_rule = configuration.get('due_rule', '15_end')
     reference = configuration.get('due_reference', 'start')
     if due_rule not in ('15_end', 'start', 'fixed'):

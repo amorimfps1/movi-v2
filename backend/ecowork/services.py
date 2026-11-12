@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction
 from django.db.models import Q
@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from core.audit import record
 from core.models import Condominium, CondominiumAssociation, Person, ResidenceVerification
 from core.services import lock_admin
-from .catalog import PRODUCTS
+from .catalog import current_catalog
 
 
 @transaction.atomic
@@ -73,10 +73,13 @@ def revoke_residence(actor, verification, reason):
     return verification
 
 
-def quote(person, product):
+def quote(person, product, benefit=None):
     """Read-only estimate. Contract creation must recheck under transaction locks."""
     today = timezone.localdate()
-    item = PRODUCTS[product]
+    catalog, products, resident_discount = current_catalog(today)
+    if product not in products:
+        raise ValidationError('Produto indisponível no catálogo vigente.')
+    item = products[product]
     verification = person.residence_verifications.filter(revoked_at__isnull=True, condominium__active=True).first()
     association = None
     if verification:
@@ -84,15 +87,34 @@ def quote(person, product):
             condominium_id=verification.condominium_id, starts_on__lte=today,
         ).filter(Q(ends_on__isnull=True) | Q(ends_on__gt=today)).first()
     eligible = bool(association and item["months"] and not person.archived)
-    percent = 50 if eligible else 0
+    percent = resident_discount if eligible else 0
+    after_resident = (item['price'] * (Decimal(100 - percent) / 100)).quantize(Decimal('0.01'))
+    individual_discount = Decimal('0.00')
+    snapshot = {}
+    if benefit:
+        from billing.benefits import discount_limit
+        if (not item['months'] or benefit.scope != 'ecowork' or benefit.status != 'approved'
+                or benefit.person_id != person.pk or benefit.approval_limit_percent is None
+                or not benefit.starts_on <= today <= benefit.ends_on or (benefit.plan and benefit.plan != product)):
+            raise ValidationError({'benefit': 'O benefício não está aprovado ou não se aplica a este plano.'})
+        individual_discount = ((after_resident * benefit.value / 100).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                               if benefit.kind == 'percent' else benefit.value)
+        if individual_discount > after_resident:
+            raise ValidationError({'benefit': 'O benefício supera o valor após o desconto de morador.'})
+        limit = min(benefit.approval_limit_percent, discount_limit(catalog))
+        if after_resident and (individual_discount == after_resident or individual_discount * 100 > after_resident * limit) and not benefit.institutional_reference:
+            raise ValidationError({'benefit': 'O benefício excede o limite e exige autorização institucional.'})
+        snapshot = {'benefit': benefit.pk, 'after_resident': str(after_resident), 'discount': str(individual_discount),
+                    'kind': benefit.kind, 'value': str(benefit.value), 'approved_by': benefit.decided_by_id,
+                    'institutional_reference': benefit.institutional_reference, 'approval_limit_percent': str(limit)}
     return {
         "person": person.pk, "product": product, "base_price": item["price"],
         "discount_percent": percent,
-        "total": (item["price"] * (Decimal(100 - percent) / 100)).quantize(Decimal("0.01")),
+        "total": after_resident - individual_discount, "benefit_snapshot": snapshot,
         "residence_verification": verification.pk if verification else None,
         "association": association.pk if association else None,
-        "reason": "Desconto de morador validado." if eligible else (
-            "Desconto restrito aos planos." if not item["months"] else "Sem residência validada em condomínio com associação vigente."
+        "reason": "Desconto de morador validado." if eligible and percent else (
+            "Catálogo sem desconto para moradores." if eligible else "Desconto restrito aos planos." if not item["months"] else "Sem residência validada em condomínio com associação vigente."
         ),
         "quoted_on": today,
     }

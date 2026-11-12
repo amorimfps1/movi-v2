@@ -66,7 +66,11 @@ export function RecordForm({
   const [priceTouched, setPriceTouched] = useState(false);
   const [priceSuggested, setPriceSuggested] = useState(false);
   const contractForm = endpoint === 'enrollments/' || /^enrollments\/\d+\/renew\/$/.test(endpoint);
-  const contractDate = String(values.start_date || '');
+  const benefitForm = endpoint === 'benefits/';
+  const planForm = contractForm || (benefitForm && values.scope !== 'ecowork');
+  const ecoBenefit = benefitForm && values.scope === 'ecowork';
+  const ecoProducts = useQuery({ queryKey: ['eco-benefit-products'], queryFn: () => api<{ code: string; name: string; months: number }[]>('ecowork/products/'), enabled: ecoBenefit, retry: false });
+  const contractDate = String((benefitForm ? values.starts_on : values.start_date) || '');
   const financialOptions = useQuery({
     queryKey: ['financial-options', contractDate],
     queryFn: async () => {
@@ -74,16 +78,16 @@ export function RecordForm({
       if (!Array.isArray(data.plans) || !Array.isArray(data.methods)) throw new Error('Não foi possível interpretar as opções da tabela financeira.');
       return data;
     },
-    enabled: contractForm && !!contractDate,
+    enabled: planForm && !!contractDate,
     retry: false,
   });
   useEffect(() => {
-    if (!contractForm || !financialOptions.data) return;
+    if (!planForm || !financialOptions.data) return;
     setValues((previous) => ({ ...previous,
       plan: financialOptions.data.plans.some((plan) => plan.code === previous.plan) ? previous.plan : '',
-      payment_method: financialOptions.data.methods.includes(String(previous.payment_method)) ? previous.payment_method : '',
+      ...(contractForm ? { payment_method: financialOptions.data.methods.includes(String(previous.payment_method)) ? previous.payment_method : '' } : {}),
     }));
-  }, [contractForm, financialOptions.data]);
+  }, [contractForm, planForm, financialOptions.data]);
   const paths = [
     ...new Set(
       [
@@ -99,10 +103,11 @@ export function RecordForm({
       retry: false,
     })),
   });
-  const lookupError = lookupQueries.find((query) => query.error)?.error || (contractForm ? financialOptions.error : undefined);
-  const loading = lookupQueries.some((query) => query.isPending) || (contractForm && !!contractDate && financialOptions.isPending);
+  const lookupError = lookupQueries.find((query) => query.error)?.error || (planForm ? financialOptions.error : undefined) || (ecoBenefit ? ecoProducts.error : undefined);
+  const loading = lookupQueries.some((query) => query.isPending) || (planForm && !!contractDate && financialOptions.isPending) || (ecoBenefit && ecoProducts.isPending);
   const options = (field: FieldSpec): Option[] =>
-    (contractForm && field.key === 'plan' && financialOptions.data ? financialOptions.data.plans.map((plan) => ({ value: plan.code, label: plan.name })) : undefined) ??
+    (ecoBenefit && field.key === 'plan' && ecoProducts.data ? ecoProducts.data.filter((item) => item.months > 0).map((item) => ({ value: item.code, label: item.name })) : undefined) ??
+    (planForm && field.key === 'plan' && financialOptions.data ? financialOptions.data.plans.map((plan) => ({ value: plan.code, label: plan.name })) : undefined) ??
     (contractForm && field.key === 'payment_method' && financialOptions.data ? financialOptions.data.methods.map((method) => ({ value: method, label: method === 'card' ? 'Cartão' : method === 'boleto' ? 'Boleto' : method })) : undefined) ??
     field.options ??
     (lookupQueries[paths.indexOf(field.lookup ?? "")]?.data ?? []).map(
@@ -194,7 +199,7 @@ export function RecordForm({
             <Button
               variant="secondary"
               onClick={() =>
-                { lookupQueries.forEach((query) => void query.refetch()); if (contractForm && contractDate) void financialOptions.refetch(); }
+                { lookupQueries.forEach((query) => void query.refetch()); if (planForm && contractDate) void financialOptions.refetch(); }
               }
             >
               Tentar carregar opções novamente

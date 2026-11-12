@@ -13,6 +13,7 @@ import { chargeSpec, paymentSpec, paymentMethods } from "./schema";
 import { ResourceList } from "./resources";
 import { ActionForm } from "./forms";
 import { CollectionMessages } from "./CollectionMessages";
+import { useAuth } from "./auth";
 import {
   PageTitle,
   Button,
@@ -98,7 +99,7 @@ export function Finance({ payments = false }: { payments?: boolean }) {
           payments
             ? undefined
             : (row) =>
-                row.status !== "paid" && (
+                row.status !== "paid" && row.status !== "cancelled" && !row.cancelled_on && (
                   <Button
                     variant="ghost"
                     onClick={() => setReceiving(row)}
@@ -131,11 +132,11 @@ export function Finance({ payments = false }: { payments?: boolean }) {
             </nav>
             <section className="finance-overview">
               <div>
-                <span>Recebido no período</span>
+                <span>Recebido líquido no período</span>
                 <strong>
                   {summary.data ? money(summary.data.received) : "—"}
                 </strong>
-                <small>Data de recebimento</small>
+                <small>Recebimentos menos devoluções do período</small>
               </div>
               <div>
                 <span>Previsto no período</span>
@@ -208,7 +209,7 @@ export function ChargeDetail() {
         title={String(row.student_name)}
         description={`${label(row.category)} · ${String(row.class_name)}`}
         actions={
-          row.status !== "paid" && (
+          row.status !== "paid" && row.status !== "cancelled" && !row.cancelled_on && (
             <Button onClick={() => setReceiving(true)}>
               <Wallet size={17} />
               Registrar recebimento
@@ -216,6 +217,7 @@ export function ChargeDetail() {
           )
         }
       />
+      {row.cancelled_on && row.status !== "cancelled" && <Notice tone="warning">Cancelamento desta cobrança programado para {date(row.cancelled_on)}; recebimentos estão indisponíveis.</Notice>}
       {success && <Notice tone="success">{success}</Notice>}
       <section className="charge-summary">
         <div>
@@ -314,6 +316,7 @@ export function ChargeDetail() {
                         {String(
                           payment.reference || "Sem referência informada",
                         )}
+                        {payment.voided_at ? ' · Lançamento invalidado' : ''}
                       </small>
                     </div>
                     <Check size={20} />
@@ -343,11 +346,17 @@ export function ChargeDetail() {
 }
 export function PaymentDetail() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const [voiding, setVoiding] = useState(false);
+  const [refunding, setRefunding] = useState(false);
+  const [refundKey, setRefundKey] = useState('');
   const query = useApi<RecordData>(`payments/${id}/`);
   if (query.isPending) return <Loading />;
   if (query.error) return <ErrorNotice error={query.error} />;
   if (!query.data) return null;
   const row = query.data;
+  const refunds = Array.isArray(row.refunds) ? row.refunds as RecordData[] : [];
+  const refundableCents = Math.max(0, Math.round(Number(row.amount) * 100) - refunds.reduce((total, item) => total + Math.round(Number(item.amount) * 100), 0));
   return (
     <>
       <Link className="back-link" to="/recebimentos">
@@ -358,12 +367,13 @@ export function PaymentDetail() {
         eyebrow={`RECEBIMENTO · #${id}`}
         title={money(row.amount)}
         description={`Recebido de ${String(row.student_name)} em ${date(row.paid_on)}.`}
+        actions={user?.roles.includes('coordinator') && !row.voided_at && <>{refunds.length === 0 && <Button variant="secondary" onClick={() => setVoiding(true)}>Invalidar lançamento</Button>}{refundableCents > 0 && <Button variant="secondary" onClick={() => { setRefundKey(crypto.randomUUID()); setRefunding(true); }}>Registrar devolução</Button>}</>}
       />
       <div className="detail-grid">
         <section className="sheet">
           <div className="section-heading">
             <h2>Comprovante do registro</h2>
-            <Badge value="paid">Registrado</Badge>
+            <Badge value={row.voided_at ? 'cancelled' : 'paid'}>{row.voided_at ? 'Invalidado' : 'Registrado'}</Badge>
           </div>
           <dl className="details-list">
             <div>
@@ -399,11 +409,19 @@ export function PaymentDetail() {
             </div>
           </dl>
         </section>
-        <Notice tone="warning">
-          Este registro é preservado no histórico. Correção ou estorno requer
-          política institucional definida: RN-048 e DN-008.
-        </Notice>
+        <Notice tone="warning">{row.voided_at ? `Lançamento invalidado em ${timestamp(row.voided_at)}. Motivo: ${String(row.void_reason)}.` : 'A invalidação corrige um lançamento incorreto e não representa devolução de dinheiro.'}</Notice>
       </div>
+      {voiding && <ActionForm title="Invalidar lançamento" endpoint={`payments/${id}/void/`} description="Use apenas para corrigir um lançamento incorreto. O saldo da cobrança será atualizado; nenhuma devolução de dinheiro é registrada."
+        fields={[{ key: 'reason', label: 'Motivo da correção', type: 'textarea', required: true, wide: true }]} onClose={() => setVoiding(false)} />}
+      <section className="sheet section-pad"><h2>Devoluções</h2><p>A devolução é registrada separadamente e não reabre a cobrança.</p>
+        {!refunds.length ? <p>Nenhuma devolução registrada.</p> : <ul>{refunds.map((refund) => <li key={refund.id}>{money(refund.amount)} · {date(refund.refunded_on)} · {String(refund.reason)}</li>)}</ul>}
+      </section>
+      {refunding && <ActionForm title="Registrar devolução" endpoint={`payments/${id}/refund/`} description={`A devolução não reabre a cobrança. Valor disponível: ${money(refundableCents / 100)}.`}
+        fields={[{ key: 'amount', label: 'Valor devolvido (R$)', type: 'decimal', required: true, default: (refundableCents / 100).toFixed(2) },
+          { key: 'refunded_on', label: 'Data da devolução', type: 'date', required: true, default: today() },
+          { key: 'method', label: 'Forma da devolução', type: 'select', required: true, options: paymentMethods },
+          { key: 'reference', label: 'Referência' }, { key: 'reason', label: 'Justificativa', type: 'textarea', required: true, wide: true }]}
+        transform={(values) => ({ ...values, request_key: refundKey })} onClose={() => setRefunding(false)} />}
     </>
   );
 }

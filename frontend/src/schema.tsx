@@ -97,6 +97,8 @@ export const enrollmentFields: FieldSpec[] = [
   },
   { key: "source_lead", label: "Lead de origem (opcional)", type: "select", lookup: "leads/?status=converted", nullable: true, wide: true,
     hint: "Selecione somente se este lead deu origem à contratação e estiver vinculado à pessoa escolhida." },
+  { key: 'benefit', label: 'Bolsa ou desconto aprovado (opcional)', type: 'select', lookup: 'benefits/?status=approved&scope=academic', nullable: true, wide: true,
+    optionLabel: row => `${String(row.person_name)} · ${String(row.value)}${row.kind === 'percent' ? '%' : ' reais'} · #${String(row.id)}` },
   {
     key: "start_date",
     label: "Início",
@@ -629,7 +631,7 @@ export const chargeSpec: ResourceSpec = {
     {
       key: "status",
       label: "Situação",
-      options: ["open", "paid", "overdue"].map((value) => ({
+      options: ["open", "paid", "overdue", "cancelled"].map((value) => ({
         value,
         label: label(value),
       })),
@@ -682,6 +684,7 @@ export const paymentSpec: ResourceSpec = {
       render: (row) => label(row.category),
     },
     { key: "amount", label: "Recebido", render: (row) => money(row.amount) },
+    { key: "voided_at", label: "Situação", render: (row) => row.voided_at ? 'Invalidado' : 'Válido' },
     {
       key: "method",
       label: "Forma",

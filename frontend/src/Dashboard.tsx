@@ -88,9 +88,9 @@ export function Dashboard() {
           {admin ? (
             <>
               <div>
-                <span>Recebido no período</span>
+                <span>Recebido líquido no período</span>
                 <strong>{money(summary.data.received)}</strong>
-                <small>Por data de recebimento</small>
+                <small>Recebimentos menos devoluções do período</small>
               </div>
               <div>
                 <span>Saldo vencido</span>

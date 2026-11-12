@@ -19,12 +19,13 @@ from core.models import User, Person, Lead, ClassGroup, OperationLock
 from core.permissions import IsInternal, IsAdministrative, is_administrative
 from core.audit import record
 from core.services import lock_student_identities
-from .models import Enrollment, Charge, Payment, CommercialCondition, EnrollmentSuspension, WaitingListEntry, FrequencyPolicy
+from .models import Enrollment, Charge, Payment, PaymentRefund, CommercialCondition, EnrollmentSuspension, WaitingListEntry, FrequencyPolicy, BenefitAuthorization
 from .serializers import (EnrollmentSerializer, ChargeSerializer, PaymentSerializer, ReceiptSerializer, ConditionSerializer,
     EligibilitySerializer, SummarySerializer, PoliciesSerializer, DecisionErrorSerializer, CancelSerializer)
 from .services import DecisionRequired, PENDING_DECISIONS, active_on_q, ensure_class_capacity, evaluate_eligibility
 from .serializers import MessageRequestSerializer, MessageSentSerializer, MessageResponseSerializer, MessageConfirmationSerializer
 from .serializers import EnrollmentCancelSerializer, SuspensionSerializer, WaitingListSerializer
+from .serializers import PaymentRefundRequestSerializer, PaymentRefundSerializer
 
 
 def locked_actor(request):
@@ -71,11 +72,13 @@ class EnrollmentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins
         if 'coordinator' not in actor.roles:
             raise PermissionDenied('Somente a Coordenação pode autorizar suspensões.')
         enrollment = locked_enrollment(pk)
-        if enrollment.administrative_status != 'regular':
+        if enrollment.administrative_status != 'regular' and (not enrollment.cancelled_on or enrollment.cancelled_on <= timezone.localdate()):
             raise ValidationError('Somente matrículas regulares podem ser suspensas.')
         serializer = SuspensionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         start, end = serializer.validated_data['starts_on'], serializer.validated_data['ends_on']
+        if enrollment.cancelled_on and end >= enrollment.cancelled_on:
+            raise ValidationError('A suspensão deve terminar antes do cancelamento programado.')
         if start < enrollment.start_date or (enrollment.end_date and end > enrollment.end_date):
             raise ValidationError('A suspensão deve estar dentro da vigência do contrato.')
         if enrollment.suspensions.filter(starts_on__lte=end, ends_on__gte=start).exists():
@@ -108,6 +111,10 @@ class EnrollmentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins
             group.modality = Modality.objects.select_for_update().get(pk=group.modality_id)
             data = serializer.validated_data
             data.update(terms(group, data['start_date'], data['plan'], data.get('associated', False), data['payment_method'], data.get('installments', 1)))
+            if data.get('benefit'):
+                from .benefits import apply_benefit
+                benefit = BenefitAuthorization.objects.select_for_update().get(pk=data['benefit'].pk)
+                data.update(apply_benefit(dict(data), benefit, student, group, data['start_date'], data['plan']))
             if renewed_from:
                 data['fee_amount'] = Decimal('0.00')
                 data['schedule'] = [item for item in data['schedule'] if item['category'] != 'enrollment_fee']
@@ -173,22 +180,42 @@ class EnrollmentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins
         record(actor, 'enrollment.renewed', enrollment, metadata={'previous': previous.pk})
         return Response(self.get_serializer(enrollment).data, status=201)
 
-    @extend_schema(request=CancelSerializer,responses=EnrollmentSerializer)
+    @extend_schema(request=EnrollmentCancelSerializer,responses=EnrollmentSerializer)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def cancel(self, request, pk=None):
         self.get_object()
-        data = CancelSerializer(data=request.data)
+        data = EnrollmentCancelSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         reason = data.validated_data['reason']
         actor = locked_actor(request)
         enrollment = locked_enrollment(pk)
+        effective = data.validated_data['effective_on']
+        if enrollment.end_date and effective > enrollment.end_date:
+            raise ValidationError({'effective_on': 'A data de cancelamento não pode ser posterior ao fim do contrato.'})
+        ids = data.validated_data['charge_ids']
+        if ids and 'coordinator' not in actor.roles:
+            raise PermissionDenied('Somente a Coordenação pode cancelar parcelas.')
+        charges = list(Charge.objects.select_for_update().filter(enrollment=enrollment, pk__in=ids).order_by('pk'))
+        if len(charges) != len(ids):
+            raise ValidationError({'charge_ids': 'Uma ou mais parcelas não pertencem a esta matrícula.'})
+        if enrollment.administrative_status == 'cancelled' and ids:
+            raise ValidationError('A matrícula já foi cancelada; os encargos não podem ser alterados nesta ação.')
+        if enrollment.administrative_status == 'cancelled' and enrollment.cancelled_on != effective:
+            raise ValidationError({'effective_on': 'A matrícula já possui outra data de cancelamento.'})
+        for charge in charges:
+            if charge.category != 'tuition' or charge.due_date <= effective or charge.cancelled_on or charge.payments.filter(voided_at__isnull=True).exists():
+                raise ValidationError({'charge_ids': 'Selecione somente parcelas futuras, não pagas e ainda não canceladas.'})
+        for charge in charges:
+            charge.cancelled_on, charge.cancelled_by, charge.cancellation_reason = effective, actor, reason
+            charge.save(update_fields=['cancelled_on', 'cancelled_by', 'cancellation_reason'])
+            record(actor, 'charge.cancelled', charge, reason=reason, metadata={'enrollment': enrollment.pk, 'effective_on': effective.isoformat(), 'amount': str(charge.amount)})
         if enrollment.administrative_status != 'cancelled':
             enrollment.administrative_status = 'cancelled'
-            enrollment.cancelled_on = timezone.localdate()
+            enrollment.cancelled_on = effective
             enrollment.save(update_fields=['administrative_status', 'cancelled_on'])
             record(actor, 'enrollment.cancelled', enrollment, reason=reason,
-                   metadata={'effective_on':timezone.localdate().isoformat()})
+                   metadata={'effective_on':effective.isoformat(), 'cancelled_charge_ids': ids})
         return Response(self.get_serializer(enrollment).data)
 
     @extend_schema(parameters=[OpenApiParameter('on',OpenApiTypes.DATE)],responses=EligibilitySerializer)
@@ -231,6 +258,8 @@ class ChargeViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
             actor = locked_actor(request)
             locked_enrollment(charge.enrollment_id)
             charge = Charge.objects.select_for_update().get(pk=pk)
+            if charge.cancelled_on:
+                raise ValidationError('Cobrança cancelada não pode receber mensagem de cobrança.')
             if charge.is_paid:
                 raise ValidationError('Cobrança já quitada. Atualize a consulta.')
             text = (f'Olá, {data.validated_data["recipient"]}. Identificamos uma cobrança de '
@@ -269,9 +298,12 @@ class ChargeViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
         qs = filter_dates(qs, self.request.query_params, 'due_date')
         requested_status = self.request.query_params.get('status')
         if requested_status:
-            if requested_status not in ['paid','open','overdue']:
+            if requested_status not in ['paid','open','overdue','cancelled']:
                 raise ValidationError({'status':'Situação inválida.'})
-            qs = qs.annotate(received_total=Coalesce(Sum('payments__amount'),Decimal('0.00'),
+            if requested_status == 'cancelled':
+                return qs.filter(cancelled_on__lte=timezone.localdate())
+            qs = qs.filter(Q(cancelled_on__isnull=True) | Q(cancelled_on__gt=timezone.localdate()))
+            qs = qs.annotate(received_total=Coalesce(Sum('payments__amount', filter=Q(payments__voided_at__isnull=True)),Decimal('0.00'),
                 output_field=DecimalField(max_digits=12,decimal_places=2)))
             paid = Q(received_total__gte=models_f_amount())
             qs = qs.filter(paid) if requested_status == 'paid' else qs.exclude(paid)
@@ -318,15 +350,19 @@ class ChargeViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cre
             OperationLock.objects.select_for_update().get(key=lock_key)
         enrollment = locked_enrollment(original.enrollment_id)
         charge = Charge.objects.select_for_update().get(pk=pk)
+        if charge.cancelled_on:
+            raise ValidationError('Esta cobrança foi cancelada e não pode receber pagamento.')
         if key:
             existing = Payment.objects.filter(request_key=key).first()
             if existing:
+                if existing.voided_at:
+                    raise ValidationError({'request_key': 'O lançamento anterior foi invalidado; use uma nova operação.'})
                 if existing.charge_id == charge.pk and all(getattr(existing, field) == value for field, value in receipt.validated_data.items()):
                     return Response(PaymentSerializer(existing).data)
                 raise ValidationError({'request_key': 'Esta chave já foi usada para outro recebimento.'})
         payments = list(Payment.objects.select_for_update().filter(charge=charge))
-        balance = charge.amount - sum((p.amount for p in payments), Decimal('0'))
-        if not key and len(payments) == 1 and enrollment.contract_version and payments[0].request_key is None and all(getattr(payments[0], field) == value for field, value in receipt.validated_data.items()):
+        balance = charge.amount - sum((p.amount for p in payments if not p.voided_at), Decimal('0'))
+        if not key and len(payments) == 1 and not payments[0].voided_at and enrollment.contract_version and payments[0].request_key is None and all(getattr(payments[0], field) == value for field, value in receipt.validated_data.items()):
             return Response(PaymentSerializer(payments[0]).data)
         if receipt.validated_data['amount'] > balance:
             raise DecisionRequired('O valor recebido excede o saldo da cobrança.', ['DN-008'])
@@ -346,7 +382,7 @@ def models_f_amount():
 
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsInternal, IsAdministrative]
-    queryset = Payment.objects.select_related('charge__enrollment__student','actor')
+    queryset = Payment.objects.select_related('charge__enrollment__student','actor').prefetch_related('refunds')
     serializer_class = PaymentSerializer
     filterset_fields = ['charge','method','charge__category','charge__enrollment']
     search_fields = ['charge__enrollment__student__name','reference']
@@ -354,6 +390,72 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return filter_dates(super().get_queryset(), self.request.query_params, 'paid_on')
+
+    @extend_schema(request=CancelSerializer, responses=PaymentSerializer)
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def void(self, request, pk=None):
+        original = self.get_object()
+        data = CancelSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        actor = locked_actor(request)
+        if 'coordinator' not in actor.roles:
+            raise PermissionDenied('Somente a Coordenação pode invalidar recebimentos.')
+        locked_enrollment(original.charge.enrollment_id)
+        Charge.objects.select_for_update().get(pk=original.charge_id)
+        payment = Payment.objects.select_for_update().get(pk=pk)
+        if payment.voided_at:
+            raise ValidationError('Este lançamento já foi invalidado.')
+        if payment.refunds.exists():
+            raise ValidationError('Há devoluções registradas para este pagamento; resolva os ajustes antes de invalidá-lo.')
+        payment.voided_at, payment.voided_by, payment.void_reason = timezone.now(), actor, data.validated_data['reason']
+        payment.save(update_fields=['voided_at', 'voided_by', 'void_reason'])
+        record(actor, 'payment.voided', payment, reason=payment.void_reason, metadata={'charge': payment.charge_id, 'amount': str(payment.amount)})
+        return Response(self.get_serializer(payment).data)
+
+    @extend_schema(request=PaymentRefundRequestSerializer, responses=PaymentRefundSerializer)
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def refund(self, request, pk=None):
+        original = self.get_object()
+        data = PaymentRefundRequestSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        actor = locked_actor(request)
+        if 'coordinator' not in actor.roles:
+            raise PermissionDenied('Somente a Coordenação pode registrar devoluções.')
+        key = data.validated_data['request_key']
+        lock_key = f'academic-refund:{key}'
+        OperationLock.objects.get_or_create(key=lock_key)
+        OperationLock.objects.select_for_update().get(key=lock_key)
+        locked_enrollment(original.charge.enrollment_id)
+        Charge.objects.select_for_update().get(pk=original.charge_id)
+        payment = Payment.objects.select_for_update().get(pk=pk)
+        existing = PaymentRefund.objects.filter(request_key=key).first()
+        if existing:
+            if existing.payment_id == payment.pk and all(getattr(existing, field) == value for field, value in data.validated_data.items()):
+                return Response(PaymentRefundSerializer(existing).data)
+            raise ValidationError({'request_key': 'Esta chave já foi usada em outra devolução.'})
+        if payment.voided_at:
+            raise ValidationError('Não é possível devolver um pagamento invalidado.')
+        if data.validated_data['refunded_on'] < payment.paid_on:
+            raise ValidationError({'refunded_on': 'A devolução não pode anteceder o pagamento.'})
+        refunded = payment.refunds.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        if refunded + data.validated_data['amount'] > payment.amount:
+            raise ValidationError({'amount': 'O valor supera o saldo disponível para devolução.'})
+        refund = PaymentRefund.objects.create(payment=payment, actor=actor, **data.validated_data)
+        record(actor, 'payment.refunded', refund, reason=refund.reason, metadata={'payment': payment.pk, 'amount': str(refund.amount), 'refunded_on': refund.refunded_on.isoformat()})
+        return Response(PaymentRefundSerializer(refund).data, status=status.HTTP_201_CREATED)
+
+
+class PaymentRefundViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsInternal, IsAdministrative]
+    queryset = PaymentRefund.objects.select_related('payment__charge__enrollment__student', 'actor')
+    serializer_class = PaymentRefundSerializer
+    filterset_fields = ['payment', 'method', 'payment__charge__enrollment']
+    ordering_fields = ['refunded_on', 'id', 'amount']
+
+    def get_queryset(self):
+        return filter_dates(super().get_queryset(), self.request.query_params, 'refunded_on')
 
 
 def filter_dates(qs, params, field):
@@ -428,7 +530,7 @@ class OccupancyView(APIView):
     @extend_schema(responses=OccupancySerializer)
     def get(self, request):
         today = timezone.localdate()
-        active = Q(enrollments__administrative_status='regular', enrollments__start_date__lte=today) & (
+        active = active_on_q(today, 'enrollments__') & Q(enrollments__start_date__lte=today) & (
             Q(enrollments__end_date__isnull=True) | Q(enrollments__end_date__gte=today))
         groups = ClassGroup.objects.filter(active=True).annotate(
             regular_count=Count('enrollments', filter=active & Q(enrollments__kind='regular'), distinct=True),
@@ -556,8 +658,8 @@ class FrequencyView(APIView):
         today = timezone.localdate()
         policy = FrequencyPolicy.objects.filter(pk=1).first()
         short_days, long_days, threshold = (policy.short_days, policy.long_days, policy.absence_threshold) if policy else (30, 90, 3)
-        active = Enrollment.objects.filter(administrative_status='regular', kind='regular', start_date__lte=today,
-            student__archived=False, class_group__active=True).filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
+        active = Enrollment.objects.filter(kind='regular', start_date__lte=today,
+            student__archived=False, class_group__active=True).filter(active_on_q(today)).filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
         rows = {e.pk: {'enrollment': e.pk, 'person': e.student.name, 'class_name': e.class_group.name,
                        'short_window': {'present': 0, 'absent': 0}, 'long_window': {'present': 0, 'absent': 0},
                        'consecutive_absences': 0, '_streak_open': True}
@@ -649,22 +751,24 @@ class SummaryView(APIView):
             if 'instructor' in request.user.roles:
                 result['classes'] = ClassGroup.objects.filter(instructor__user=request.user,instructor__active=True,active=True).count()
             return Response(result)
-        charges = list(filter_dates(Charge.objects.all(),params,'due_date').prefetch_related('payments'))
-        payments = filter_dates(Payment.objects.all(),params,'paid_on')
+        charges = list(filter_dates(Charge.objects.filter(Q(cancelled_on__isnull=True) | Q(cancelled_on__gt=today)),params,'due_date').prefetch_related('payments'))
+        payments = filter_dates(Payment.objects.filter(voided_at__isnull=True),params,'paid_on')
+        refunds = filter_dates(PaymentRefund.objects.all(), params, 'refunded_on')
         zero = Decimal('0.00')
-        received = payments.aggregate(value=Sum('amount'))['value'] or zero
+        refunded = refunds.aggregate(value=Sum('amount'))['value'] or zero
+        received = (payments.aggregate(value=Sum('amount'))['value'] or zero) - refunded
         expected = sum((c.amount for c in charges),zero)
         outstanding = sum((max(c.amount-c.received,zero) for c in charges),zero)
         overdue = sum((max(c.amount-c.received,zero) for c in charges if c.due_date < today),zero)
-        categories = {category: str(payments.filter(charge__category=category).aggregate(value=Sum('amount'))['value'] or zero)
+        categories = {category: str((payments.filter(charge__category=category).aggregate(value=Sum('amount'))['value'] or zero) - (refunds.filter(payment__charge__category=category).aggregate(value=Sum('amount'))['value'] or zero))
                       for category in ['tuition','enrollment_fee','extra']}
         result.update(students=Person.objects.filter(archived=False, enrollments__isnull=False).distinct().count(),
-            enrollments=Enrollment.objects.filter(administrative_status='regular').count(),
+            enrollments=Enrollment.objects.filter(active_on_q(today)).count(),
             classes=ClassGroup.objects.filter(active=True).count(),
             pending_users=User.objects.filter(access_status='pending').count(),
-            received=str(received), expected=str(expected),outstanding=str(outstanding), overdue=str(overdue),
+            received=str(received), refunded=str(refunded), expected=str(expected),outstanding=str(outstanding), overdue=str(overdue),
             categories=categories, base=None, final_payout=None,
-            financial_definition='Recebido: data de recebimento no período. Previsto: cobranças com vencimento no período. Saldo e vencidos: dessas cobranças, recebimentos registrados até a consulta. Contagens cadastrais refletem a situação atual. Definição institucional e atribuição do repasse pendentes.')
+            financial_definition='Recebido líquido: recebimentos válidos pela data de pagamento menos devoluções pela data de devolução. Previsto: cobranças com vencimento no período. Devoluções não reabrem cobranças. Contagens cadastrais refletem a situação atual. Atribuição do repasse pendente.')
         return Response(result)
 
 
@@ -676,14 +780,14 @@ def safe_csv(value):
 class ExportView(APIView):
     permission_classes = [IsInternal, IsAdministrative]
 
-    @extend_schema(parameters=[OpenApiParameter('resource',str,enum=['students','charges','payments']),
+    @extend_schema(parameters=[OpenApiParameter('resource',str,enum=['students','charges','payments','refunds']),
         OpenApiParameter('search',str),OpenApiParameter('start',OpenApiTypes.DATE),OpenApiParameter('end',OpenApiTypes.DATE)],
         responses={(200,'text/csv'):OpenApiTypes.BINARY})
     def get(self, request):
         resource = request.query_params.get('resource','students')
-        if resource not in ['students','charges','payments']:
-            raise ValidationError({'resource':'Selecione students, charges ou payments.'})
-        cls = {'students':None,'charges':ChargeViewSet,'payments':PaymentViewSet}[resource]
+        if resource not in ['students','charges','payments','refunds']:
+            raise ValidationError({'resource':'Selecione students, charges, payments ou refunds.'})
+        cls = {'students':None,'charges':ChargeViewSet,'payments':PaymentViewSet,'refunds':PaymentRefundViewSet}[resource]
         if resource == 'students':
             from core.views import PersonViewSet
             cls = PersonViewSet
@@ -700,9 +804,12 @@ class ExportView(APIView):
         elif resource == 'charges':
             writer.writerow(['ID','Matrícula','Aluno','Categoria','Competência','Vencimento','Devido','Recebido','Situação'])
             rows = ((o.pk,o.enrollment_id,o.enrollment.student.name,o.category,o.competence,o.due_date,o.amount,o.received,o.status) for o in qs)
+        elif resource == 'payments':
+            writer.writerow(['ID','Cobrança','Recebido','Data','Forma','Situação','Invalidado em'])
+            rows = ((o.pk,o.charge_id,o.amount,o.paid_on,o.method,'Invalidado' if o.voided_at else 'Válido',o.voided_at) for o in qs)
         else:
-            writer.writerow(['ID','Cobrança','Recebido','Data','Forma'])
-            rows = ((o.pk,o.charge_id,o.amount,o.paid_on,o.method) for o in qs)
+            writer.writerow(['ID','Pagamento','Valor devolvido','Data','Forma'])
+            rows = ((o.pk,o.payment_id,o.amount,o.refunded_on,o.method) for o in qs)
         for row in rows:
             writer.writerow([safe_csv(value) for value in row])
         return response

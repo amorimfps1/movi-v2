@@ -191,6 +191,40 @@ class FinancialTests(TestCase):
         self.assertTrue(charge.is_paid)
         self.assertEqual(Payment.objects.count(), 2)
 
+    def test_void_payment_requires_coordinator_reopens_balance_and_keeps_audit(self):
+        charge = self.charge()
+        payload = {'amount': '60.00', 'paid_on': self.today.isoformat(), 'method': 'pix', 'request_key': '132bff7d-775a-4482-966a-a77c5bde0172'}
+        payment = self.client.post(f'/api/charges/{charge.pk}/receive/', payload, format='json')
+        self.assertEqual(payment.status_code, 201)
+        url = f"/api/payments/{payment.data['id']}/void/"
+        self.assertEqual(self.client.post(url, {'reason': 'Lançamento incorreto'}, format='json').status_code, 403)
+        coordinator = User.objects.create_user(email='coord-void@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(url, {'reason': 'Lançamento incorreto'}, format='json').status_code, 200)
+        self.assertEqual(charge.received, Decimal('0.00'))
+        self.assertEqual(self.client.post(f'/api/charges/{charge.pk}/receive/', payload, format='json').status_code, 400)
+        self.assertEqual(Decimal(self.client.get('/api/reports/summary/').data['received']), Decimal('0.00'))
+        self.assertTrue(AuditEvent.objects.filter(action='payment.voided', reason='Lançamento incorreto').exists())
+
+    def test_refund_is_separate_idempotent_and_does_not_reopen_charge(self):
+        charge = self.charge()
+        payment = self.receive(charge)
+        self.assertEqual(payment.status_code, 201)
+        url = f"/api/payments/{payment.data['id']}/refund/"
+        payload = {'amount': '40.00', 'refunded_on': self.today.isoformat(), 'method': 'pix', 'reason': 'Devolução aprovada',
+                   'request_key': '7a358d45-7289-42a0-966a-5731f47d203e'}
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 403)
+        coordinator = User.objects.create_user(email='coord-refund@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 201)
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 200)
+        self.assertEqual(self.client.post(url, {**payload, 'amount': '61.00', 'request_key': '42723aef-b522-4b43-b4e3-cb0e149da5b5'}, format='json').status_code, 400)
+        self.assertTrue(charge.is_paid)
+        summary = self.client.get('/api/reports/summary/').data
+        self.assertEqual((Decimal(summary['received']), Decimal(summary['refunded'])), (Decimal('60.00'), Decimal('40.00')))
+        self.assertEqual(self.client.post(f"/api/payments/{payment.data['id']}/void/", {'reason': 'Tentativa'}, format='json').status_code, 400)
+        self.assertTrue(AuditEvent.objects.filter(action='payment.refunded', reason='Devolução aprovada').exists())
+
     def test_excess_not_recorded_without_policy(self):
         charge = self.charge()
         self.assertEqual(self.receive(charge,'101.00').status_code,409)

@@ -98,7 +98,7 @@ def terms(group, start, plan, associated, method, installments):
 
 def generate(enrollment, actor):
     """Caller holds ClassGroup and Enrollment locks inside a transaction."""
-    if enrollment.contract_version != 1 or not enrollment.schedule:
+    if enrollment.contract_version != 1 or (not enrollment.schedule and not enrollment.benefit_snapshot.get('fully_waived')):
         raise ValidationError('Matrícula legada sem cronograma contratual. Não é possível inferir obrigações.')
     if enrollment.administrative_status != 'regular' and (not enrollment.cancelled_on or enrollment.cancelled_on <= timezone.localdate()):
         raise ValidationError('Matrícula cancelada; geração indisponível.')
@@ -126,10 +126,12 @@ def contract_eligibility(enrollment, on):
             return {**result, 'reason': f'Cobrança obrigatória ausente ou divergente: {item["key"]}. Solicite regularização.'}
         required.append(charge)
     def paid(charge):
-        return sum((p.amount for p in charge.payments.all() if p.paid_on <= on), Decimal('0')) >= charge.amount
+        return sum((p.amount for p in charge.payments.all() if p.paid_on <= on and (not p.voided_at or timezone.localtime(p.voided_at).date() > on)), Decimal('0')) >= charge.amount
     if any(c.due_date < on and not paid(c) for c in charges.values()):
         return {**result, 'reason': 'Cobrança vencida sem quitação integral.'}
     activation = [c for c in required if c.category == 'enrollment_fee' or c.idempotency_key.endswith(':installment:1')]
+    if not activation and enrollment.benefit_snapshot.get('fully_waived') and enrollment.fee_amount == 0:
+        return {**result, 'eligible': True, 'status': 'regular', 'reason': 'Contrato vigente com obrigações integralmente dispensadas.'}
     if not activation or not all(paid(c) for c in activation):
         return {**result, 'status': 'pending', 'reason': 'Aguardando pagamento da primeira parcela e da taxa de matrícula, quando aplicável.'}
     return {**result, 'eligible': True, 'status': 'regular', 'reason': 'Contrato vigente e pagamentos regulares.'}

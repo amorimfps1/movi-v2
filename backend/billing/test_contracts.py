@@ -38,6 +38,129 @@ class ContractTests(TestCase):
             'amount': str(charge.amount), 'paid_on': (on or self.today).isoformat(), 'method': 'card',
         }, format='json')
 
+    def test_cancel_future_unpaid_installment_preserves_history(self):
+        enrollment = self.enroll(self.today)
+        charge = enrollment.charges.filter(category='tuition', due_date__gt=self.today).last()
+        self.assertIsNotNone(charge)
+        coordinator = User.objects.create_user(email='coord-cancel@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        payload = {'reason': 'Serviço não prestado', 'charge_ids': [charge.pk], 'service_unprovided_confirmed': True}
+        response = self.client.post(f'/api/enrollments/{enrollment.pk}/cancel/', payload, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        charge.refresh_from_db()
+        self.assertEqual(charge.status, 'cancelled')
+        listed = self.client.get('/api/charges/?status=cancelled').data['results']
+        self.assertIn(charge.pk, [item['id'] for item in listed])
+        summary = self.client.get(f'/api/reports/summary/?start={charge.due_date.isoformat()}&end={charge.due_date.isoformat()}').data
+        self.assertEqual(Decimal(summary['outstanding']), Decimal('0.00'))
+        self.assertEqual(self.settle(charge).status_code, 400)
+        self.assertTrue(AuditEvent.objects.filter(action='charge.cancelled', reason='Serviço não prestado').exists())
+
+    def test_scheduled_cancellation_preserves_coverage_until_effective_date(self):
+        from unittest.mock import patch
+        enrollment = self.enroll(self.today)
+        first = enrollment.charges.get(idempotency_key=f'contract:{enrollment.pk}:installment:1')
+        self.assertEqual(self.settle(first).status_code, 201)
+        self.assertEqual(self.settle(enrollment.charges.get(category='enrollment_fee')).status_code, 201)
+        charge = enrollment.charges.filter(category='tuition').order_by('due_date').last()
+        effective = self.today + timedelta(days=10)
+        coordinator = User.objects.create_user(email='coord-schedule@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        response = self.client.post(f'/api/enrollments/{enrollment.pk}/cancel/', {
+            'reason': 'Serviço futuro não prestado', 'effective_on': effective.isoformat(),
+            'charge_ids': [charge.pk], 'service_unprovided_confirmed': True,
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        enrollment.refresh_from_db()
+        charge.refresh_from_db()
+        self.assertEqual(response.data['administrative_status'], 'regular')
+        self.assertTrue(evaluate_eligibility(enrollment, self.today)['eligible'])
+        self.assertEqual(evaluate_eligibility(enrollment, effective)['status'], 'cancelled')
+        self.assertEqual(charge.cancelled_on, effective)
+        self.assertEqual(self.settle(charge).status_code, 400)
+        self.assertIn(enrollment.pk, [item['id'] for item in self.client.get('/api/enrollments/?administrative_status=regular').data['results']])
+        self.assertEqual(self.client.get('/api/reports/occupancy/').data['classes'][0]['regular'], 2)
+        with patch('django.utils.timezone.localdate', return_value=effective):
+            self.assertNotIn(enrollment.pk, [item['id'] for item in self.client.get('/api/enrollments/?administrative_status=regular').data['results']])
+            self.assertEqual(self.client.get(f'/api/enrollments/{enrollment.pk}/').data['administrative_status'], 'cancelled')
+            self.assertEqual(self.client.get('/api/reports/occupancy/').data['classes'][0]['regular'], 1)
+
+    def test_scheduled_cancellation_rejects_installment_due_before_effect(self):
+        enrollment = self.enroll(self.today)
+        charge = enrollment.charges.filter(category='tuition').order_by('due_date').first()
+        coordinator = User.objects.create_user(email='coord-date@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        response = self.client.post(f'/api/enrollments/{enrollment.pk}/cancel/', {
+            'reason': 'Revisão', 'effective_on': (self.today + timedelta(days=10)).isoformat(),
+            'charge_ids': [charge.pk], 'service_unprovided_confirmed': True,
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        enrollment.refresh_from_db()
+        self.assertEqual(enrollment.administrative_status, 'regular')
+
+    def test_capacity_releases_on_scheduled_cancellation_and_ignores_empty_period(self):
+        from rest_framework.exceptions import ValidationError
+        from .services import ensure_class_capacity
+        self.enrollment.administrative_status = 'cancelled'
+        self.enrollment.cancelled_on = self.today
+        self.enrollment.save(update_fields=['administrative_status', 'cancelled_on'])
+        enrollment = self.enroll(self.today)
+        self.group.capacity = 1
+        self.group.save(update_fields=['capacity'])
+        enrollment.administrative_status = 'cancelled'
+        enrollment.cancelled_on = self.today + timedelta(days=10)
+        enrollment.save(update_fields=['administrative_status', 'cancelled_on'])
+        with self.assertRaises(ValidationError):
+            ensure_class_capacity(self.group, self.today, self.today + timedelta(days=2))
+        ensure_class_capacity(self.group, enrollment.cancelled_on, enrollment.cancelled_on + timedelta(days=2))
+        enrollment.start_date = self.today + timedelta(days=20)
+        enrollment.save(update_fields=['start_date'])
+        ensure_class_capacity(self.group, self.today, self.today + timedelta(days=30))
+
+    def test_void_first_installment_revokes_current_eligibility(self):
+        enrollment = self.enroll(self.today)
+        first = enrollment.charges.get(idempotency_key=f'contract:{enrollment.pk}:installment:1')
+        fee = enrollment.charges.get(category='enrollment_fee')
+        paid = self.settle(first)
+        self.assertEqual(paid.status_code, 201)
+        self.assertEqual(self.settle(fee).status_code, 201)
+        self.assertTrue(evaluate_eligibility(enrollment)['eligible'])
+        coordinator = User.objects.create_user(email='coord-void-contract@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        result = self.client.post(f"/api/payments/{paid.data['id']}/void/", {'reason': 'Registro incorreto'}, format='json')
+        self.assertEqual(result.status_code, 200)
+        self.assertFalse(evaluate_eligibility(enrollment)['eligible'])
+
+    def test_cancel_installments_requires_coordination_and_does_not_cancel_paid_amounts(self):
+        enrollment = self.enroll(self.today)
+        charge = enrollment.charges.filter(category='tuition', due_date__gt=self.today).first()
+        payload = {'reason': 'Revisão', 'charge_ids': [charge.pk], 'service_unprovided_confirmed': True}
+        url = f'/api/enrollments/{enrollment.pk}/cancel/'
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 403)
+        coordinator = User.objects.create_user(email='coord-check@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.settle(charge).status_code, 201)
+        self.assertEqual(self.client.post(url, payload, format='json').status_code, 400)
+        enrollment.refresh_from_db()
+        charge.refresh_from_db()
+        self.assertEqual(enrollment.administrative_status, 'regular')
+        self.assertIsNone(charge.cancelled_on)
+
+    def test_cancel_installment_after_invalid_payment_was_corrected(self):
+        enrollment = self.enroll(self.today)
+        charge = enrollment.charges.filter(category='tuition', due_date__gt=self.today).last()
+        coordinator = User.objects.create_user(email='coord-correct-before-cancel@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        payment = self.settle(charge)
+        self.assertEqual(payment.status_code, 201)
+        self.assertEqual(self.client.post(f"/api/payments/{payment.data['id']}/void/", {'reason': 'Lançamento incorreto'}, format='json').status_code, 200)
+        response = self.client.post(f'/api/enrollments/{enrollment.pk}/cancel/', {
+            'reason': 'Serviço não prestado', 'charge_ids': [charge.pk], 'service_unprovided_confirmed': True,
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        charge.refresh_from_db()
+        self.assertEqual(charge.status, 'cancelled')
+
     def test_published_catalog_applies_only_to_new_contracts(self):
         previous = self.enroll(date(2026, 1, 5))
         config = {'plans': {'quarterly': {'months': 3, 'installments': [3]}},
@@ -89,6 +212,95 @@ class ContractTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('source_lead', response.data)
 
+    def test_full_scholarship_requires_institutional_reference_and_creates_no_fake_payment(self):
+        payload = {'person': self.student.pk, 'starts_on': self.today.isoformat(), 'ends_on': (self.today + timedelta(days=30)).isoformat(),
+                   'kind': 'percent', 'value': '100.00', 'fee_waiver': True, 'reason': 'Bolsa solicitada'}
+        requested = self.client.post('/api/benefits/', payload, format='json')
+        self.assertEqual(requested.status_code, 201, requested.data)
+        url = f"/api/benefits/{requested.data['id']}/approve/"
+        self.assertEqual(self.client.post(url, {'reason': 'Revisado'}, format='json').status_code, 403)
+        coordinator = User.objects.create_user(email='coord-benefit@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(url, {'reason': 'Revisado'}, format='json').status_code, 400)
+        self.assertEqual(self.client.post(url, {'reason': 'Revisado', 'institutional_reference': 'Autorização 10'}, format='json').status_code, 200)
+        self.client.force_authenticate(self.admin)
+        response = self.client.post('/api/enrollments/', {'student': self.student.pk, 'class_group': self.group.pk,
+            'start_date': self.today.isoformat(), 'plan': 'quarterly', 'payment_method': 'card', 'installments': 3,
+            'associated': False, 'benefit': requested.data['id']}, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        enrollment = Enrollment.objects.get(pk=response.data['id'])
+        self.assertEqual(enrollment.amount, Decimal('0.00'))
+        self.assertEqual(enrollment.charges.count(), 0)
+        self.assertEqual(Payment.objects.count(), 0)
+        self.assertTrue(evaluate_eligibility(enrollment)['eligible'])
+
+    def test_fixed_discount_above_limit_requires_specific_authorization(self):
+        payload = {'person': self.student.pk, 'starts_on': self.today.isoformat(), 'ends_on': (self.today + timedelta(days=30)).isoformat(),
+                   'kind': 'fixed', 'value': '500.00', 'fee_waiver': False, 'reason': 'Desconto solicitado'}
+        benefit = self.client.post('/api/benefits/', payload, format='json')
+        self.assertEqual(benefit.status_code, 201, benefit.data)
+        coordinator = User.objects.create_user(email='coord-fixed@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(f"/api/benefits/{benefit.data['id']}/approve/", {'reason': 'Revisado'}, format='json').status_code, 200)
+        self.client.force_authenticate(self.admin)
+        response = self.client.post('/api/enrollments/', {'student': self.student.pk, 'class_group': self.group.pk,
+            'start_date': self.today.isoformat(), 'plan': 'quarterly', 'payment_method': 'card', 'installments': 3,
+            'associated': False, 'benefit': benefit.data['id']}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('benefit', response.data)
+
+    def test_partial_discount_preserves_exact_sum_and_fee(self):
+        payload = {'person': self.student.pk, 'starts_on': self.today.isoformat(), 'ends_on': (self.today + timedelta(days=30)).isoformat(),
+                   'kind': 'percent', 'value': '15.00', 'fee_waiver': False, 'reason': 'Desconto solicitado'}
+        benefit = self.client.post('/api/benefits/', payload, format='json')
+        coordinator = User.objects.create_user(email='coord-discount@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(f"/api/benefits/{benefit.data['id']}/approve/", {'reason': 'Revisado'}, format='json').status_code, 200)
+        self.client.force_authenticate(self.admin)
+        response = self.client.post('/api/enrollments/', {'student': self.student.pk, 'class_group': self.group.pk,
+            'start_date': self.today.isoformat(), 'plan': 'quarterly', 'payment_method': 'card', 'installments': 3,
+            'associated': False, 'benefit': benefit.data['id']}, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        enrollment = Enrollment.objects.get(pk=response.data['id'])
+        self.assertEqual(sum(item.amount for item in enrollment.charges.filter(category='tuition')), enrollment.amount)
+        self.assertEqual(enrollment.charges.filter(category='enrollment_fee').count(), 1)
+        self.assertEqual(enrollment.benefit_snapshot['gross'], '1123.75')
+
+    def test_fee_waiver_can_be_requested_without_tuition_discount(self):
+        payload = {'person': self.student.pk, 'starts_on': self.today.isoformat(), 'ends_on': (self.today + timedelta(days=30)).isoformat(),
+                   'kind': 'percent', 'value': '0.00', 'fee_waiver': True, 'reason': 'Isenção de taxa'}
+        benefit = self.client.post('/api/benefits/', payload, format='json')
+        self.assertEqual(benefit.status_code, 201, benefit.data)
+        coordinator = User.objects.create_user(email='coord-fee@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(f"/api/benefits/{benefit.data['id']}/approve/", {'reason': 'Revisado'}, format='json').status_code, 200)
+        self.client.force_authenticate(self.admin)
+        response = self.client.post('/api/enrollments/', {'student': self.student.pk, 'class_group': self.group.pk,
+            'start_date': self.today.isoformat(), 'plan': 'quarterly', 'payment_method': 'card', 'installments': 3,
+            'associated': False, 'benefit': benefit.data['id']}, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        enrollment = Enrollment.objects.get(pk=response.data['id'])
+        self.assertEqual(enrollment.amount, Decimal('1123.75'))
+        self.assertFalse(enrollment.charges.filter(category='enrollment_fee').exists())
+
+    def test_benefit_cannot_bypass_stricter_catalog_limit(self):
+        config = {'plans': {'quarterly': {'months': 3, 'installments': [3]}},
+                  'prices': [{'category': 1, 'plan': 'quarterly', 'method': 'card', 'associated': False, 'amount': '300.00'}],
+                  'fees': {'standard': {'associated': '0.00', 'non_associated': '0.00'}}}
+        for version, start, end, limit in [(1, date(2026, 1, 1), date(2026, 6, 30), '20.00'), (2, date(2026, 7, 1), date(2026, 12, 31), '10.00')]:
+            FinancialCatalogVersion.objects.create(version=version, status='published', effective_from=start, effective_until=end,
+                configuration={**config, 'discount_limit_percent': limit}, created_by=self.admin, published_by=self.admin, published_at=timezone.now())
+        requested = self.client.post('/api/benefits/', {'person': self.student.pk, 'starts_on': '2026-01-01', 'ends_on': '2026-12-31',
+            'kind': 'percent', 'value': '15.00', 'fee_waiver': False, 'reason': 'Pedido'}, format='json')
+        coordinator = User.objects.create_user(email='coord-limit@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        self.assertEqual(self.client.post(f"/api/benefits/{requested.data['id']}/approve/", {'reason': 'Aprovado'}, format='json').status_code, 200)
+        self.client.force_authenticate(self.admin)
+        response = self.client.post('/api/enrollments/', {'student': self.student.pk, 'class_group': self.group.pk, 'start_date': '2026-08-01',
+            'plan': 'quarterly', 'payment_method': 'card', 'installments': 3, 'associated': False, 'benefit': requested.data['id']}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('benefit', response.data)
+
     def test_waiting_list_priority_and_conversion_are_atomic(self):
         first = Person.objects.create(name='Primeira')
         second = Person.objects.create(name='Segunda')
@@ -139,6 +351,20 @@ class ContractTests(TestCase):
         self.assertEqual(enrollment.amount, Decimal('600.00'))
         self.assertEqual(enrollment.charges.count(), 6)
         self.assertEqual(self.client.get(f'/api/enrollments/{enrollment.pk}/').data['plan_name'], 'Plano semestral')
+
+    def test_cannot_end_catalog_before_already_scheduled_contract(self):
+        config = {'plans': {'quarterly': {'months': 3, 'installments': [3]}},
+                  'prices': [{'category': 1, 'plan': 'quarterly', 'method': 'card', 'associated': False, 'amount': '300.00'}],
+                  'fees': {'standard': {'associated': '0.00', 'non_associated': '0.00'}}}
+        catalog = FinancialCatalogVersion.objects.create(version=1, status='published', effective_from=self.today,
+            configuration=config, created_by=self.admin, published_by=self.admin, published_at=timezone.now())
+        self.enroll(self.today + timedelta(days=1))
+        coordinator = User.objects.create_user(email='coord-end@example.test', password='password', access_status='approved', roles=['coordinator'])
+        self.client.force_authenticate(coordinator)
+        response = self.client.post(f'/api/financial-catalogs/{catalog.pk}/end/', {'effective_until': self.today.isoformat(), 'reason': 'Nova tabela'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        catalog.refresh_from_db()
+        self.assertIsNone(catalog.effective_until)
 
     def test_quarterly_annual_and_exact_installment_totals(self):
         for plan, months, counts in [('quarterly', 3, [1, 2, 3]), ('yearly', 12, [3, 6, 10, 12])]:

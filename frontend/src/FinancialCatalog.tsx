@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { optionsFor, patch, post } from "./api";
 import { Button, ErrorNotice, Field, Loading, Notice, PageTitle } from "./ui";
+import { ActionForm } from './forms';
 
 type Price = { category: number; plan: string; method: string; associated: boolean; amount: string };
 type Plan = { name?: string; months: number; installments: number[] };
-type Config = { plans: Record<string, Plan>; prices: Price[]; fees: Record<string, { associated: string; non_associated: string }>; due_rule?: string; due_day?: number; due_reference?: string };
+type Config = { plans: Record<string, Plan>; prices: Price[]; fees: Record<string, { associated: string; non_associated: string }>; due_rule?: string; due_day?: number; due_reference?: string; discount_limit_percent?: string };
 type Catalog = { id: number; version: number; status: string; effective_from: string; effective_until: string | null; configuration: Config };
 type Preview = { valid: boolean; errors: string[]; conflicting_versions: number[]; existing_contracts_preserved: number; scope: string; revision: string };
 const initial = (): Config => ({ plans: { quarterly: { months: 3, installments: [1, 2, 3] }, yearly: { months: 12, installments: [3, 6, 10, 12] } }, prices: [], fees: { standard: { associated: "25.00", non_associated: "35.00" }, rhythmic: { associated: "35.00", non_associated: "70.00" } } });
@@ -25,6 +26,7 @@ export function FinancialCatalog() {
   const [error, setError] = useState<unknown>();
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [ending, setEnding] = useState(false);
   const current = catalogs.data?.find((row) => Number(row.id) === selected) as Catalog | undefined;
   const editable = !current || current.status === "draft";
   async function run(action: () => Promise<void>) {
@@ -51,6 +53,10 @@ export function FinancialCatalog() {
       <Field label="Versão da tabela"><select value={selected ?? ""} onChange={(e) => choose(catalogs.data?.find((r) => Number(r.id) === Number(e.target.value)) as Catalog | undefined)}>
         <option value="">Novo rascunho</option>{catalogs.data?.map((row) => <option key={Number(row.id)} value={Number(row.id)}>Versão {String(row.version)} · {row.status === "published" ? "Publicada" : "Rascunho"} · {String(row.effective_from)}</option>)}
       </select></Field>
+      {current?.status === 'published' && <div className="form-actions"><Button type="button" variant="secondary" onClick={() => { const copy = structuredClone(config); choose(); setConfig(copy); setInstallmentText(Object.fromEntries(Object.entries(copy.plans).map(([key, plan]) => [key, plan.installments.join(', ')]))); setDirty(true); }}>Criar nova versão com estes dados</Button><Button type="button" variant="secondary" onClick={() => setEnding(true)}>Encerrar vigência</Button></div>}
+      {ending && current && <ActionForm title="Encerrar vigência da tabela" endpoint={`financial-catalogs/${current.id}/end/`} description="O fim não pode ser retroativo. Contratos existentes preservam suas condições."
+        fields={[{ key: 'effective_until', label: 'Último dia de vigência', type: 'date', required: true }, { key: 'reason', label: 'Justificativa', type: 'textarea', required: true, wide: true }]}
+        onClose={() => setEnding(false)} onSaved={() => setNotice('Vigência atualizada.')} />}
       <form onChangeCapture={() => { setPreview(null); setDirty(true); }} onSubmit={(event) => { event.preventDefault(); void run(save); }}>
         <fieldset disabled={!editable || pending}>
           <div className="form-grid"><Field label="Vigência a partir de"><input type="date" required value={start} onChange={(e) => setStart(e.target.value)} /></Field>
@@ -79,6 +85,7 @@ export function FinancialCatalog() {
           <Button type="button" variant="secondary" disabled={!Object.keys(config.plans).length} onClick={() => { setDirty(true); setPreview(null); setConfig({ ...config, prices: [...config.prices, { category: 1, plan: Object.keys(config.plans)[0], method: "card", associated: false, amount: "" }] }); }}>Adicionar preço</Button>
           <h2>Taxas de matrícula</h2>
           {Object.entries(config.fees).map(([kind, fee]) => <div className="form-grid" key={kind}>{(["associated", "non_associated"] as const).map((key) => <Field key={key} label={`${kind === "standard" ? "Convencional" : "Rítmica"} · ${key === "associated" ? "associado" : "não associado"}`}><input type="number" min="0" step="0.01" required value={fee[key]} onChange={(e) => setConfig({ ...config, fees: { ...config.fees, [kind]: { ...fee, [key]: e.target.value } } })} /></Field>)}</div>)}
+          <Field label="Limite de desconto da Coordenação (%)" hint="Percentuais maiores exigem autorização institucional registrada."><input type="number" min="0" max="100" step="0.01" value={config.discount_limit_percent ?? '20.00'} onChange={(e) => setConfig({ ...config, discount_limit_percent: e.target.value })} required /></Field>
           <div className="form-actions"><Button type="submit">Salvar rascunho</Button></div>
         </fieldset>
       </form>

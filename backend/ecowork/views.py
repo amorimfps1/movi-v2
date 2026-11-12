@@ -3,12 +3,13 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.utils import timezone
 
 from core.models import Condominium, CondominiumAssociation, ResidenceVerification
 from core.permissions import IsAdministrative, IsInternal
 from core.serializers import ReasonSerializer
 from core.views import AdministrativeModelViewSet, ListConfiguration
-from .catalog import PRODUCTS
+from .catalog import current_catalog
 from .serializers import (
     AssociationSerializer, CondominiumSerializer, EndAssociationSerializer,
     ProductSerializer, QuoteRequestSerializer, QuoteSerializer, ResidenceSerializer,
@@ -69,7 +70,8 @@ class ProductView(APIView):
 
     @extend_schema(responses=ProductSerializer(many=True))
     def get(self, request):
-        return Response(ProductSerializer([dict(code=code, **item) for code, item in PRODUCTS.items()], many=True).data)
+        _, products, _ = current_catalog(timezone.localdate())
+        return Response(ProductSerializer([dict(code=code, **item) for code, item in products.items()], many=True).data)
 
 
 class QuoteView(APIView):
