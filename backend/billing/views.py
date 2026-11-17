@@ -123,7 +123,24 @@ class EnrollmentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins
             raise PermissionDenied('A exceção exige Coordenação e limite físico cadastrado para a turma.')
         ensure_class_capacity(group, serializer.validated_data['start_date'], serializer.validated_data.get('end_date'), student.pk,
                               group.physical_capacity if exception_reason else None)
-        enrollment = serializer.save(administrative_status='regular', renewed_from=renewed_from)
+        guardian_data = serializer.validated_data.pop('guardian_data', None)
+        guardian = None
+        if guardian_data:
+            if guardian_data.get('id'):
+                guardian = Person.objects.select_for_update().filter(pk=guardian_data['id'], archived=False).first()
+                if not guardian or guardian.pk == student.pk:
+                    raise ValidationError({'guardian_data': 'Selecione uma pessoa ativa diferente do aluno.'})
+            else:
+                cpf = guardian_data.get('cpf', '')
+                email = guardian_data.get('email', '').strip().lower()
+                existing = Q(pk__in=[])
+                if cpf: existing |= Q(cpf=cpf)
+                if email: existing |= Q(email__iexact=email)
+                if Person.objects.filter(existing).exists():
+                    raise ValidationError({'guardian_data': 'Já existe pessoa com este CPF ou e-mail. Selecione o cadastro existente.'})
+                guardian = Person.objects.create(name=guardian_data['name'], cpf=cpf, email=email, phone=guardian_data.get('phone', ''))
+                record(actor, 'student.create', guardian, metadata={'source': 'enrollment_guardian'})
+        enrollment = serializer.save(administrative_status='regular', renewed_from=renewed_from, guardian=guardian)
         if first_waiting:
             first_waiting.status, first_waiting.enrollment = 'enrolled', enrollment
             first_waiting.save(update_fields=['status', 'enrollment'])
@@ -133,7 +150,7 @@ class EnrollmentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins
             generate(enrollment, actor)
         CommercialCondition.objects.create(enrollment=enrollment, amount=enrollment.amount,
             plan=enrollment.plan, effective_on=enrollment.start_date, actor=actor, reason='Condição inicial informada no cadastro.')
-        record(actor, 'enrollment.created', enrollment, metadata={'amount':str(enrollment.amount), 'plan':enrollment.plan})
+        record(actor, 'enrollment.created', enrollment, metadata={'amount':str(enrollment.amount), 'plan':enrollment.plan, 'is_minor': enrollment.is_minor, 'guardian_id': enrollment.guardian_id})
         if exception_reason:
             record(actor, 'enrollment.capacity_exception', enrollment, reason=exception_reason,
                    metadata={'class_group': group.pk, 'regular_capacity': group.capacity, 'physical_capacity': group.physical_capacity})

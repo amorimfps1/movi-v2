@@ -3,7 +3,8 @@ import type { FormEvent } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RecordData } from "./types";
 import { api, optionsFor, post, patch } from "./api";
-import { Button, Field, ErrorNotice, Modal, Loading, Notice } from "./ui";
+import { Button, Field, ErrorNotice, Modal, Loading, Notice, SearchableSelect } from "./ui";
+import { today } from "./format";
 export type Option = { value: string | number; label: string };
 export type FieldSpec = {
   key: string;
@@ -18,6 +19,7 @@ export type FieldSpec = {
     | "decimal"
     | "textarea"
     | "select"
+    | "lookup"
     | "multi"
     | "check";
   required?: boolean;
@@ -65,7 +67,22 @@ export function RecordForm({
   const [pending, setPending] = useState(false);
   const [priceTouched, setPriceTouched] = useState(false);
   const [priceSuggested, setPriceSuggested] = useState(false);
+  const [scheduleTrial, setScheduleTrial] = useState(false);
+  const [trialLesson, setTrialLesson] = useState("");
+  const [trialPerson, setTrialPerson] = useState("");
+  const [trialBirthDate, setTrialBirthDate] = useState("");
+  const [trialGuardian, setTrialGuardian] = useState(false);
+  const [isMinor, setIsMinor] = useState(initial.is_minor === true);
+  const [guardianMode, setGuardianMode] = useState<"new" | "existing">(initial.guardian ? "existing" : "new");
+  const [guardianId, setGuardianId] = useState(String(initial.guardian || ""));
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianCpf, setGuardianCpf] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
+  const trialLessons = useQuery({ queryKey: ['options', 'lessons/?trial_available=true'], queryFn: () => optionsFor('lessons/?trial_available=true'), enabled: scheduleTrial, retry: false });
+  const trialPeople = useQuery({ queryKey: ['options', 'people/'], queryFn: () => optionsFor('people/'), enabled: scheduleTrial, retry: false });
   const contractForm = endpoint === 'enrollments/' || /^enrollments\/\d+\/renew\/$/.test(endpoint);
+  const guardianPeople = useQuery({ queryKey: ['options', 'people/?archived=false'], queryFn: () => optionsFor('people/?archived=false'), enabled: contractForm && isMinor && guardianMode === 'existing', retry: false });
   const benefitForm = endpoint === 'benefits/';
   const planForm = contractForm || (benefitForm && values.scope !== 'ecowork');
   const ecoBenefit = benefitForm && values.scope === 'ecowork';
@@ -88,10 +105,13 @@ export function RecordForm({
       ...(contractForm ? { payment_method: financialOptions.data.methods.includes(String(previous.payment_method)) ? previous.payment_method : '' } : {}),
     }));
   }, [contractForm, planForm, financialOptions.data]);
+  const enrollmentStudent = String(('student' in values ? values.student : initial.student) || "");
+  const sourceLeadPath = contractForm && enrollmentStudent ? `leads/?status=converted&student=${encodeURIComponent(enrollmentStudent)}` : undefined;
+  const lookupPath = (field: FieldSpec) => contractForm && field.key === 'source_lead' ? sourceLeadPath : field.lookup;
   const paths = [
     ...new Set(
       [
-        ...fields.map((field) => field.lookup),
+        ...fields.map(lookupPath),
         ...(endpoint === "enrollments/" ? ["modalities/"] : []),
       ].filter((value): value is string => !!value),
     ),
@@ -103,14 +123,16 @@ export function RecordForm({
       retry: false,
     })),
   });
-  const lookupError = lookupQueries.find((query) => query.error)?.error || (planForm ? financialOptions.error : undefined) || (ecoBenefit ? ecoProducts.error : undefined);
-  const loading = lookupQueries.some((query) => query.isPending) || (planForm && !!contractDate && financialOptions.isPending) || (ecoBenefit && ecoProducts.isPending);
+  const sourceLeadQuery = sourceLeadPath ? lookupQueries[paths.indexOf(sourceLeadPath)] : undefined;
+  const lookupError = lookupQueries.find((query, index) => paths[index] !== sourceLeadPath && query.error)?.error || (planForm ? financialOptions.error : undefined) || (ecoBenefit ? ecoProducts.error : undefined) || (scheduleTrial ? trialLessons.error || trialPeople.error : undefined);
+  const loading = lookupQueries.some((query, index) => paths[index] !== sourceLeadPath && query.isPending) || (planForm && !!contractDate && financialOptions.isPending) || (ecoBenefit && ecoProducts.isPending) || (scheduleTrial && (trialLessons.isPending || trialPeople.isPending));
+  const guardianUnavailable = contractForm && isMinor && guardianMode === 'existing' && (guardianPeople.isPending || guardianPeople.isError);
   const options = (field: FieldSpec): Option[] =>
     (ecoBenefit && field.key === 'plan' && ecoProducts.data ? ecoProducts.data.filter((item) => item.months > 0).map((item) => ({ value: item.code, label: item.name })) : undefined) ??
     (planForm && field.key === 'plan' && financialOptions.data ? financialOptions.data.plans.map((plan) => ({ value: plan.code, label: plan.name })) : undefined) ??
     (contractForm && field.key === 'payment_method' && financialOptions.data ? financialOptions.data.methods.map((method) => ({ value: method, label: method === 'card' ? 'Cartão' : method === 'boleto' ? 'Boleto' : method })) : undefined) ??
     field.options ??
-    (lookupQueries[paths.indexOf(field.lookup ?? "")]?.data ?? []).map(
+    (lookupQueries[paths.indexOf(lookupPath(field) ?? "")]?.data ?? []).map(
       (row) => ({
         value: Number(row.id),
         label:
@@ -119,6 +141,10 @@ export function RecordForm({
       }),
     );
   function change(field: FieldSpec, value: unknown) {
+    if (contractForm && field.key === 'student') {
+      setValues((previous) => ({ ...previous, student: value, source_lead: String(previous.student ?? '') === String(value) ? previous.source_lead : '' }));
+      return;
+    }
     if (field.key === "amount") {
       setPriceTouched(true);
       setPriceSuggested(false);
@@ -164,7 +190,7 @@ export function RecordForm({
             (field.nullable && value === "")
               ? null
               : field.type === "number" ||
-                  (field.lookup && field.type === "select")
+                  (field.lookup && (field.type === "select" || field.type === "lookup"))
                 ? value === ""
                   ? ""
                   : Number(value)
@@ -174,6 +200,13 @@ export function RecordForm({
           ];
         }),
     );
+    if (scheduleTrial && endpoint === 'leads/' && !record) {
+      payload.trial = { lesson: Number(trialLesson), person: trialPerson ? Number(trialPerson) : null, birth_date: trialBirthDate, guardian_authorization: trialGuardian };
+    }
+    if (contractForm) {
+      payload.is_minor = isMinor;
+      if (isMinor) payload.guardian_data = guardianMode === 'existing' ? { id: Number(guardianId) } : { name: guardianName, cpf: guardianCpf, email: guardianEmail, phone: guardianPhone };
+    }
     try {
       const row = record
         ? await patch<RecordData>(`${endpoint}${record.id}/`, payload)
@@ -191,6 +224,7 @@ export function RecordForm({
     <Modal open title={title} onClose={() => !pending && onClose()}>
       <form onSubmit={submit}>
         {contractForm && financialOptions.data && !financialOptions.data.plans.length && <Notice tone="warning">Não há tabela financeira publicada para a data escolhida.</Notice>}
+        {endpoint === 'leads/' && !record && <label className="check-option lead-trial-toggle"><input className="toggle" role="switch" type="checkbox" checked={scheduleTrial} onChange={(event) => setScheduleTrial(event.target.checked)} /> Agendar aula experimental</label>}
         {loading ? (
           <Loading />
         ) : lookupError ? (
@@ -199,7 +233,7 @@ export function RecordForm({
             <Button
               variant="secondary"
               onClick={() =>
-                { lookupQueries.forEach((query) => void query.refetch()); if (planForm && contractDate) void financialOptions.refetch(); }
+                { lookupQueries.forEach((query) => void query.refetch()); if (planForm && contractDate) void financialOptions.refetch(); if (scheduleTrial) { void trialLessons.refetch(); void trialPeople.refetch(); } if (contractForm && isMinor && guardianMode === 'existing') void guardianPeople.refetch(); }
               }
             >
               Tentar carregar opções novamente
@@ -212,7 +246,13 @@ export function RecordForm({
                 key={field.key}
                 label={field.label}
                 hint={
-                  field.key === "amount" && priceSuggested
+                  contractForm && field.key === 'source_lead' && !enrollmentStudent
+                    ? "Selecione o aluno primeiro."
+                    : contractForm && field.key === 'source_lead' && sourceLeadQuery?.isPending
+                      ? "Carregando leads vinculados…"
+                      : contractForm && field.key === 'source_lead' && sourceLeadQuery?.error
+                        ? "Não foi possível carregar os leads vinculados. Tente novamente."
+                  : field.key === "amount" && priceSuggested
                     ? "Valor sugerido pela modalidade. Confira as condições antes de salvar."
                     : field.hint
                 }
@@ -225,6 +265,9 @@ export function RecordForm({
                     required={field.required}
                     rows={4}
                   />
+                ) : (field.type === "lookup" || field.type === "select") && field.lookup ? (
+                  <SearchableSelect value={String(values[field.key] ?? "")} options={options(field)}
+                    onChange={(value) => change(field, value)} required={field.required} disabled={field.readOnly || (contractForm && field.key === 'source_lead' && (!enrollmentStudent || sourceLeadQuery?.isPending || !!sourceLeadQuery?.error))} />
                 ) : field.type === "select" ? (
                   <select
                     value={String(values[field.key] ?? "")}
@@ -279,7 +322,8 @@ export function RecordForm({
                   </div>
                 ) : field.type === "check" ? (
                   <input
-                    className="field-checkbox"
+                    className="toggle"
+                    role="switch"
                     type="checkbox"
                     checked={!!values[field.key]}
                     onChange={(event) => change(field, event.target.checked)}
@@ -310,6 +354,32 @@ export function RecordForm({
                 )}
               </Field>
             ))}
+            {sourceLeadQuery?.error && <div className="field--wide"><ErrorNotice error={sourceLeadQuery.error} /><Button type="button" variant="secondary" onClick={() => void sourceLeadQuery.refetch()}>Tentar carregar leads novamente</Button></div>}
+            {contractForm && <>
+              <label className="check-option field--wide"><input className="toggle" role="switch" type="checkbox" checked={isMinor} onChange={(event) => setIsMinor(event.target.checked)} /> Aluno é menor de idade</label>
+              {isMinor && <>
+                <Field label="Responsável" wide><select value={guardianMode} onChange={(event) => setGuardianMode(event.target.value as "new" | "existing")}><option value="new">Cadastrar responsável</option><option value="existing">Selecionar pessoa cadastrada</option></select></Field>
+                {guardianMode === 'existing' && guardianPeople.isPending ? <div className="field--wide"><Loading /></div> : guardianMode === 'existing' && guardianPeople.isError ? <div className="field--wide"><ErrorNotice error={guardianPeople.error} /><Button type="button" variant="secondary" onClick={() => void guardianPeople.refetch()}>Tentar novamente</Button></div> : guardianMode === 'existing' ? <Field label="Pessoa responsável" wide><SearchableSelect required value={guardianId} onChange={setGuardianId}
+                  options={(guardianPeople.data ?? []).filter((person) => !person.archived && String(person.id) !== String(values.student || initial.student || '')).map((person) => ({ value: Number(person.id), label: String(person.name) }))} /></Field>
+                  : <>
+                    <Field label="Nome do responsável" wide><input required maxLength={200} value={guardianName} onChange={(event) => setGuardianName(event.target.value)} /></Field>
+                    <Field label="CPF do responsável"><input value={guardianCpf} onChange={(event) => setGuardianCpf(event.target.value)} /></Field>
+                    <Field label="E-mail do responsável"><input type="email" value={guardianEmail} onChange={(event) => setGuardianEmail(event.target.value)} /></Field>
+                    <Field label="Telefone do responsável"><input type="tel" value={guardianPhone} onChange={(event) => setGuardianPhone(event.target.value)} /></Field>
+                  </>}
+              </>}
+            </>}
+            {endpoint === 'leads/' && !record && <>
+              {scheduleTrial && <>
+                <Field label="Aula experimental" wide><SearchableSelect required value={trialLesson} onChange={setTrialLesson}
+                  options={(trialLessons.data ?? []).filter((row) => String(row.date) >= today()).map((row) => ({ value: Number(row.id), label: String(row.name || `${row.class_name} — ${row.date}`) }))} /></Field>
+                <Field label="Pessoa já cadastrada (opcional)" wide hint="Selecione o cadastro existente se o CPF ou e-mail já estiver em uso."><SearchableSelect value={trialPerson} onChange={setTrialPerson}
+                  options={(trialPeople.data ?? []).filter((row) => !row.archived).map((row) => ({ value: Number(row.id), label: String(row.name) }))} /></Field>
+                <Field label="Data de nascimento"><input type="date" required max={today()} value={trialBirthDate} onChange={(event) => setTrialBirthDate(event.target.value)} /></Field>
+                <label className="check-option field--wide"><input className="toggle" role="switch" type="checkbox" checked={trialGuardian} onChange={(event) => setTrialGuardian(event.target.checked)} /> Autorização do responsável conferida</label>
+                <p className="field--wide muted">A autorização é obrigatória para menores de idade.</p>
+              </>}
+            </>}
           </div>
         )}
         <ErrorNotice error={error} />
@@ -322,7 +392,7 @@ export function RecordForm({
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={pending || loading || !!lookupError}>
+          <Button type="submit" disabled={pending || loading || !!lookupError || guardianUnavailable}>
             {pending
               ? "Salvando…"
               : record
@@ -354,7 +424,7 @@ export function ActionForm({
   button?: string;
 }) {
   const [values, setValues] = useState<Record<string, unknown>>(() =>
-    Object.fromEntries(fields.map((field) => [field.key, field.default ?? ""])),
+    Object.fromEntries(fields.map((field) => [field.key, field.default ?? (field.type === "check" ? false : "")])),
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>();
@@ -396,6 +466,9 @@ export function ActionForm({
                   required={field.required}
                   rows={3}
                 />
+              ) : field.type === "check" ? (
+                <input className="toggle" role="switch" type="checkbox" checked={!!values[field.key]}
+                  onChange={(event) => setValues({ ...values, [field.key]: event.target.checked })} />
               ) : field.type === "select" ? (
                 <select
                   value={String(values[field.key])}

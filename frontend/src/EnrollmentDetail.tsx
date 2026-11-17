@@ -99,6 +99,7 @@ function EnrollmentRecord({ id }: { id: string }) {
         endpoint={`enrollments/${id}/repair_charges/`} fields={[]} onClose={() => setRepairing(false)} onSaved={() => setNotice('Cronograma conferido e cobranças ausentes geradas.')} />}
       {renewing && <RecordForm title="Renovar contrato" endpoint={`enrollments/${id}/renew/`}
         fields={enrollmentFields.filter(f => !['student', 'class_group'].includes(f.key))}
+        initial={{ is_minor: value.is_minor, guardian: value.guardian, student: value.student }}
         onClose={() => setRenewing(false)} onSaved={row => setNotice(`Renovação registrada na matrícula #${row.id}.`)} />}
       <Journey step={state?.eligible ? 3 : 2} />
       <div className="detail-grid">
@@ -109,6 +110,8 @@ function EnrollmentRecord({ id }: { id: string }) {
               <Badge value={value.administrative_status} />
             </div>
             <dl className="details-list">
+              {value.is_minor != null && <div><dt>Menor de idade</dt><dd>{value.is_minor ? 'Sim' : 'Não'}</dd></div>}
+              {!!value.guardian && <div><dt>Responsável</dt><dd><Link to={`/pessoas/${value.guardian}`}>{String(value.guardian_name || `Pessoa #${value.guardian}`)}</Link></dd></div>}
               <div>
                 <dt>Turma</dt>
                 <dd>

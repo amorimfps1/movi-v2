@@ -15,10 +15,10 @@ export function PersonOverview({ id }: { id: string }) {
     {query.isError && <Button variant="secondary" onClick={() => void query.refetch()}>Tentar novamente</Button>}
     {query.data && <dl className="details-list">
       <div><dt>Contratações EcoWork</dt><dd>{query.data.orders}</dd></div>
-      <div><dt>Total de cobran?as n?o canceladas</dt><dd>{money(query.data.total)}</dd></div>
+      <div><dt>Total de cobranças não canceladas</dt><dd>{money(query.data.total)}</dd></div>
       <div><dt>Pagamentos confirmados do cliente</dt><dd>{money(query.data.paid)}</dd></div>
-      <div><dt>Devolu??es registradas</dt><dd>{money(query.data.refunded)}</dd></div>
-      <div><dt>Recebido ap?s devolu??es</dt><dd>{money(query.data.net_paid)}</dd></div>
+      <div><dt>Devoluções registradas</dt><dd>{money(query.data.refunded)}</dd></div>
+      <div><dt>Recebido após devoluções</dt><dd>{money(query.data.net_paid)}</dd></div>
       <div><dt>Saldo total em aberto</dt><dd>{money(query.data.balance)}</dd></div>
       <div><dt>Do saldo, vencido</dt><dd>{money(query.data.overdue)}</dd></div>
     </dl>}

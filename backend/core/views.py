@@ -237,9 +237,9 @@ class PersonViewSet(AdministrativeModelViewSet):
 
 
 class LeadViewSet(AdministrativeModelViewSet):
-    queryset = Lead.objects.prefetch_related("interests").all()
+    queryset = Lead.objects.prefetch_related("interests", "lead_trials__lesson__class_group").all()
     serializer_class = LeadSerializer
-    filterset_fields = ["status", "source", "interests"]
+    filterset_fields = ["status", "source", "interests", "student"]
     search_fields = ["name", "cpf", "email", "phone"]
     ordering_fields = ["id", "name", "created_at", "status"]
 
@@ -252,12 +252,74 @@ class LeadViewSet(AdministrativeModelViewSet):
         queryset = super().get_queryset()
         if getattr(self, 'swagger_fake_view', False):
             return queryset.none()
+        trial_status = self.request.query_params.get('trial_status')
+        if trial_status:
+            trial_model = apps.get_model('academic', 'TrialParticipation')
+            latest = trial_model.objects.filter(lead_id=OuterRef('pk')).order_by('-created_at', '-pk').values('status')[:1]
+            queryset = queryset.annotate(latest_trial_status=Subquery(latest))
+            if trial_status == 'none':
+                queryset = queryset.filter(latest_trial_status__isnull=True)
+            elif trial_status in {'scheduled', 'completed', 'cancelled'}:
+                queryset = queryset.filter(latest_trial_status=trial_status)
+            else:
+                raise ValidationError({'trial_status': 'Situação de experimental inválida.'})
         if is_administrative(self.request.user):
             return queryset
         if 'communication' in self.request.user.roles:
+            if 'student' in self.request.query_params:
+                raise PermissionDenied('Seu perfil não permite filtrar leads por pessoa vinculada.')
             self.search_fields = ['name']
             return queryset.prefetch_related('contact_preferences')
         raise PermissionDenied('Seu perfil não permite consultar leads.')
+
+    def perform_create(self, serializer):
+        trial_data = serializer.validated_data.pop('trial', None)
+        if not trial_data:
+            return super().perform_create(serializer)
+        from academic.serializers import TrialSerializer
+        from academic.trials import TrialViewSet
+        lock_student_identities()
+        cpf = serializer.validated_data.get('cpf', '')
+        email = serializer.validated_data.get('email', '').strip()
+        from django.db.models import Q
+        criteria = Q(pk__in=[])
+        if cpf:
+            criteria |= Q(cpf=cpf)
+        if email:
+            criteria |= Q(email__iexact=email)
+        candidate_ids = set(Person.objects.filter(criteria).values_list('pk', flat=True))
+        person_id = trial_data.get('person')
+        if person_id:
+            person = Person.objects.select_for_update().filter(pk=person_id, archived=False).first()
+            if not person or (candidate_ids and candidate_ids != {person_id}):
+                raise ValidationError({'trial': 'Confira a pessoa selecionada e os cadastros com o mesmo CPF ou e-mail.'})
+            if cpf and person.cpf and cpf != person.cpf:
+                raise ValidationError({'trial': 'O CPF do lead difere do cadastro selecionado.'})
+            if person.birth_date and person.birth_date != trial_data['birth_date']:
+                raise ValidationError({'trial': 'A data de nascimento difere do cadastro selecionado.'})
+            if not person.birth_date:
+                person.birth_date = trial_data['birth_date']
+                person.save(update_fields=['birth_date'])
+                record(self.request.user, 'person.birth_date.updated', person, metadata={'source': 'lead_trial'})
+        else:
+            if candidate_ids:
+                raise ValidationError({'trial': 'Já existe pessoa com este CPF ou e-mail. Selecione o cadastro existente.'})
+            person = Person.objects.create(name=serializer.validated_data['name'], cpf=cpf, email=email,
+                phone=serializer.validated_data.get('phone', ''), birth_date=trial_data['birth_date'])
+            record(self.request.user, 'student.create', person, metadata={'source': 'lead_trial'})
+        trial = TrialSerializer(data={'person': person.pk, 'lesson': trial_data['lesson'],
+            'guardian_authorization': trial_data['guardian_authorization']})
+        trial.is_valid(raise_exception=True)
+        lead = serializer.save()
+        record(self.request.user, 'lead.create', lead)
+        trial_view = TrialViewSet()
+        trial_view.request = self.request
+        trial_view.perform_create(trial, lead=lead)
+
+    def perform_update(self, serializer):
+        if 'trial' in serializer.validated_data:
+            raise ValidationError({'trial': 'O agendamento integrado está disponível apenas na criação do lead.'})
+        return super().perform_update(serializer)
 
     def get_serializer_class(self):
         if self.action in {'list', 'retrieve'} and not is_administrative(self.request.user):

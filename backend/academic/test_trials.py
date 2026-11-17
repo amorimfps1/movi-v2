@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 from rest_framework.exceptions import ValidationError
 
 from billing.services import ensure_class_capacity
-from core.models import AuditEvent, ClassGroup, Instructor, Modality, Person, User
+from core.models import AuditEvent, ClassGroup, Instructor, Lead, Modality, Person, User
 from .models import Lesson, TrialParticipation
 
 
@@ -62,3 +62,55 @@ class TrialTests(APITestCase):
         self.assertEqual(self.client.patch(f'/api/people/{self.person.pk}/', {'archived': True}, format='json').status_code, 200)
         self.assertEqual(TrialParticipation.objects.get(pk=created.data['id']).status, 'cancelled')
         self.assertTrue(AuditEvent.objects.filter(action='trial.cancelled', reason='Pessoa arquivada.').exists())
+
+    def test_lead_and_trial_are_created_atomically_and_conversion_keeps_person(self):
+        payload = {'name': 'Menor', 'trial': {'lesson': self.lesson.pk, 'person': self.person.pk,
+            'birth_date': self.person.birth_date.isoformat(), 'guardian_authorization': False}}
+        self.assertEqual(self.client.post('/api/leads/', payload, format='json').status_code, 400)
+        self.assertFalse(Lead.objects.exists())
+        self.assertFalse(TrialParticipation.objects.exists())
+        payload['trial']['guardian_authorization'] = True
+        created = self.client.post('/api/leads/', payload, format='json')
+        self.assertEqual(created.status_code, 201, created.data)
+        lead = Lead.objects.get(pk=created.data['id'])
+        self.assertEqual(lead.lead_trials.get().person, self.person)
+        self.assertEqual(created.data['trial_info']['lesson'], self.lesson.pk)
+        filtered = self.client.get('/api/leads/', {'trial_status': 'scheduled'})
+        self.assertEqual([row['id'] for row in filtered.data['results']], [lead.pk])
+        self.assertEqual(self.client.get('/api/leads/', {'trial_status': 'none'}).data['count'], 0)
+        converted = self.client.post(f'/api/leads/{lead.pk}/convert/', {}, format='json')
+        self.assertEqual(converted.status_code, 200, converted.data)
+        self.assertEqual(converted.data['student'], self.person.pk)
+
+    def test_lead_trial_rejects_implicit_duplicate_and_rolls_back(self):
+        self.person.email = 'menor@example.test'
+        self.person.save()
+        payload = {'name': 'Menor', 'email': self.person.email, 'trial': {'lesson': self.lesson.pk,
+            'birth_date': self.person.birth_date.isoformat(), 'guardian_authorization': True}}
+        response = self.client.post('/api/leads/', payload, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Lead.objects.count(), 0)
+        self.assertEqual(Person.objects.count(), 1)
+
+    def test_new_person_created_for_trial_is_reused_and_capacity_failure_rolls_back(self):
+        payload = {'name': 'Nova pessoa', 'trial': {'lesson': self.lesson.pk,
+            'birth_date': '2000-01-01', 'guardian_authorization': False}}
+        created = self.client.post('/api/leads/', payload, format='json')
+        self.assertEqual(created.status_code, 201, created.data)
+        lead = Lead.objects.get(pk=created.data['id'])
+        person_id = lead.lead_trials.get().person_id
+        converted = self.client.post(f'/api/leads/{lead.pk}/convert/', {}, format='json')
+        self.assertEqual(converted.status_code, 200, converted.data)
+        self.assertEqual(converted.data['student'], person_id)
+        payload['name'] = 'Sem vaga'
+        response = self.client.post('/api/leads/', payload, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Lead.objects.filter(name='Sem vaga').exists())
+        self.assertFalse(Person.objects.filter(name='Sem vaga').exists())
+
+    def test_trial_lesson_options_exclude_inactive_or_ineligible_groups(self):
+        response = self.client.get('/api/lessons/', {'trial_available': 'true'})
+        self.assertEqual([row['id'] for row in response.data['results']], [self.lesson.pk])
+        self.group.allows_trial = False
+        self.group.save(update_fields=['allows_trial'])
+        self.assertEqual(self.client.get('/api/lessons/', {'trial_available': 'true'}).data['count'], 0)

@@ -19,12 +19,12 @@ it('exige escolha explícita do destino das parcelas e motivo antes do cancelame
   const button = dialog.getByRole('button', { name: 'Cancelar contratação' });
   expect(button).toBeDisabled();
   fireEvent.change(dialog.getByLabelText('Motivo'), { target: { value: 'Encerramento solicitado' } });
-  fireEvent.click(dialog.getByRole('checkbox'));
+  fireEvent.click(dialog.getByRole('switch'));
   expect(button).toBeDisabled();
   fireEvent.change(dialog.getByLabelText('Parcelas não pagas'), { target: { value: 'cancel_unpaid' } });
   expect(dialog.getByText('Saldo de cobranças que será cancelado')).toBeInTheDocument();
-  expect(dialog.getByRole('checkbox')).not.toBeChecked();
-  fireEvent.click(dialog.getByRole('checkbox'));
+  expect(dialog.getByRole('switch')).not.toBeChecked();
+  fireEvent.click(dialog.getByRole('switch'));
   fireEvent.click(button);
   expect(await dialog.findByText('Confira os dados e tente novamente.')).toBeInTheDocument();
   const call = fetcher.mock.calls.find(([url]) => url.includes('/cancel/'))!;
@@ -38,7 +38,7 @@ it('devolução exige conferência e preserva o formulário após erro', async (
   expect(button).toBeDisabled();
   fireEvent.change(dialog.getByLabelText('Valor devolvido'), { target: { value: '20.00' } });
   fireEvent.change(dialog.getByLabelText('Motivo'), { target: { value: 'Devolução parcial conferida' } });
-  fireEvent.click(dialog.getByRole('checkbox'));
+  fireEvent.click(dialog.getByRole('switch'));
   fireEvent.click(button);
   expect(await dialog.findByText('Confira os dados e tente novamente.')).toBeInTheDocument();
   expect(dialog.getByLabelText('Valor devolvido')).toHaveValue(20);

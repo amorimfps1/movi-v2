@@ -55,6 +55,7 @@ class Attendance(models.Model):
 
 
 class TrialParticipation(models.Model):
+    lead = models.ForeignKey('core.Lead', null=True, blank=True, on_delete=models.PROTECT, related_name='lead_trials')
     person = models.ForeignKey('core.Person', on_delete=models.PROTECT, related_name='trials')
     modality = models.ForeignKey('core.Modality', on_delete=models.PROTECT, related_name='trials')
     lesson = models.ForeignKey(Lesson, on_delete=models.PROTECT, related_name='trials')

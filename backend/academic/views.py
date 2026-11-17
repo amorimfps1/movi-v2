@@ -4,6 +4,7 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from django.utils import timezone
 
 from core.models import Instructor
 from core.permissions import IsInternal, is_administrative
@@ -47,6 +48,9 @@ class LessonViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
         queryset = Lesson.objects.select_related("class_group__instructor", "assigned_instructor")
         if getattr(self, "swagger_fake_view", False):
             return queryset.none()
+        if self.request.query_params.get('trial_available') == 'true':
+            queryset = queryset.filter(status=Lesson.Status.SCHEDULED, date__gte=timezone.localdate(),
+                class_group__active=True, class_group__allows_trial=True)
         user = self.request.user
         if is_administrative(user):
             return queryset

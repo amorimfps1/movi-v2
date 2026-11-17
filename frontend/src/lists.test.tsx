@@ -141,7 +141,7 @@ it("restaura busca, filtros e página pelo endereço e mantém o contexto ao nav
     "/financeiro?start=2026-09-01&end=2026-09-30&status=overdue&search=Maria&page=2",
     <ResourceList spec={chargeSpec} />,
   );
-  await screen.findByText("26 registros · Página 2 de 2");
+  await screen.findByText("Página 2 de 2");
   expect(screen.getByLabelText("Pesquisar cobranças")).toHaveValue("Maria");
   expect(screen.getByLabelText("Vencimento a partir de")).toHaveValue(
     "2026-09-01",
@@ -151,7 +151,7 @@ it("restaura busca, filtros e página pelo endereço e mantém o contexto ao nav
   fireEvent.change(screen.getByLabelText("Finalidade"), {
     target: { value: "extra" },
   });
-  await screen.findByText("26 registros · Página 1 de 2");
+  await screen.findByText("Página 1 de 2");
   expect(currentQuery().get("category")).toBe("extra");
   expect(currentQuery().get("start")).toBe("2026-09-01");
   expect(currentQuery().get("search")).toBe("Maria");
@@ -167,7 +167,7 @@ it("restaura busca, filtros e página pelo endereço e mantém o contexto ao nav
     expect(screen.getByLabelText("Pesquisar cobranças")).toHaveValue("Maria"),
   );
   fireEvent.click(screen.getByRole("button", { name: "Voltar na navegação" }));
-  await screen.findByText("26 registros · Página 2 de 2");
+  await screen.findByText("Página 2 de 2");
   expect(screen.getByLabelText("Finalidade")).toHaveValue("");
   expect(
     fetcher.mock.calls.some(([path]) => {
@@ -189,7 +189,7 @@ it("exporta os mesmos filtros aplicados e permite limpar a consulta", async () =
     "/financeiro?enrollment=8&status=overdue&start=2026-09-01&page=2",
     <ResourceList spec={chargeSpec} />,
   );
-  await screen.findByText("26 registros · Página 2 de 2");
+  await screen.findByText("Página 2 de 2");
   fireEvent.click(screen.getByRole("button", { name: "Exportar CSV" }));
   await screen.findByText(
     "Exportação concluída: todos os registros filtrados.",
@@ -200,7 +200,7 @@ it("exporta os mesmos filtros aplicados e permite limpar a consulta", async () =
   expect(params.get("status")).toBe("overdue");
   expect(params.get("start")).toBe("2026-09-01");
   fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
-  await screen.findByText("26 registros · Página 1 de 2");
+  await screen.findByText("Página 1 de 2");
   expect(currentQuery().size).toBe(0);
   expect(screen.getByLabelText("Matrícula (número)")).toHaveValue(null);
 });

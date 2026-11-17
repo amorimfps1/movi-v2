@@ -45,7 +45,7 @@ it('exige conferência antes de enviar recebimento e mantém erro visível', asy
   const dialog = screen.getByRole('dialog');
   const confirm = within(dialog).getByRole('button', { name: 'Confirmar pagamento' });
   expect(confirm).toBeDisabled();
-  fireEvent.click(within(dialog).getByRole('checkbox'));
+  fireEvent.click(within(dialog).getByRole('switch'));
   fireEvent.click(confirm);
   expect(await within(dialog).findByText('Pagamento já registrado.')).toBeInTheDocument();
   expect(fetcher.mock.calls.filter(([url]) => url.includes('/receive/'))).toHaveLength(1);

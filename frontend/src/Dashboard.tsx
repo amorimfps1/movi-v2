@@ -37,18 +37,11 @@ export function Dashboard() {
       <PageTitle
         eyebrow="SEU PONTO DE PARTIDA"
         title={`Olá, ${user?.first_name || "equipe"}.`}
-        description={
-          admin
-            ? "Acompanhe alunos, matrículas e leads."
-            : instructor
-              ? "Consulte suas turmas e aulas."
-              : "Acompanhe os leads e as conversões."
-        }
         actions={
           admin && (
-            <Link className="button button--primary" to="/alunos">
+            <Link className="button button--primary" to="/pessoas">
               <Plus size={18} />
-              Cadastrar aluno
+              Cadastrar pessoa
             </Link>
           )
         }
@@ -128,8 +121,7 @@ export function Dashboard() {
           </div>
           {!(admin || instructor) ? (
             <Empty
-              title="Seu foco está nas conexões"
-              description="Acompanhe os indicadores comerciais nos relatórios disponíveis ao seu perfil."
+              title="Indicadores comerciais"
               action={
                 <Link className="button button--secondary" to="/relatorios">
                   Consultar indicadores
@@ -150,8 +142,7 @@ export function Dashboard() {
             </div>
           ) : !lessons.data?.results.length ? (
             <Empty
-              title="Um dia para preparar os próximos encontros"
-              description="Nenhuma aula foi agendada para hoje. Consulte as turmas e organize a agenda."
+              title="Nenhuma aula hoje"
               action={
                 <Link className="button button--secondary" to="/aulas">
                   {admin ? "Organizar aulas" : "Consultar meu diário"}{" "}
@@ -224,10 +215,7 @@ export function Dashboard() {
           )}
           <section className="policy-note">
             <span className="eyebrow">REGRAS INSTITUCIONAIS</span>
-            <h3>Decisões que orientam a operação</h3>
-            <p>
-              As decisões foram aprovadas; algumas rotinas ainda estão em implementação.
-            </p>
+            <h3>Políticas institucionais</h3>
             {policies.error ? (
               <ErrorNotice error={policies.error} />
             ) : (

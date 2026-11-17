@@ -45,13 +45,7 @@ it.each([true, false])(
       </QueryClientProvider>,
     );
     expect(screen.getByText("SEU DIÁRIO")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        classes
-          ? "Consulte as turmas e os encontros sob sua responsabilidade."
-          : "Consulte as aulas e a chamada no seu diário autorizado.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: classes ? "Turmas" : "Aulas e chamada" })).toBeInTheDocument();
     expect(screen.queryByText("ROTINA DA SECRETARIA")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", {

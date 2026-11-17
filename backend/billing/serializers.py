@@ -5,6 +5,7 @@ from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 from .models import Enrollment, Charge, Payment, PaymentRefund, CommercialCondition, EnrollmentSuspension, WaitingListEntry
 from .services import DecisionRequired, evaluate_eligibility
+from core.serializers import CPFSerializerField
 
 
 class EligibilitySerializer(serializers.Serializer):
@@ -12,6 +13,19 @@ class EligibilitySerializer(serializers.Serializer):
     status = serializers.CharField()
     reason = serializers.CharField()
     decisions = serializers.ListField(child=serializers.CharField())
+
+
+class GuardianInputSerializer(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1, required=False)
+    name = serializers.CharField(max_length=200, required=False)
+    cpf = CPFSerializerField(required=False, allow_blank=True, max_length=18)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if not attrs.get('id') and not attrs.get('name', '').strip():
+            raise serializers.ValidationError({'name': 'Informe o nome do responsável ou selecione uma pessoa cadastrada.'})
+        return attrs
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
@@ -22,13 +36,15 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     eligibility = serializers.SerializerMethodField()
     plan_name = serializers.SerializerMethodField()
     administrative_status = serializers.SerializerMethodField()
+    guardian_data = GuardianInputSerializer(write_only=True, required=False)
+    guardian_name = serializers.CharField(source='guardian.name', read_only=True, default=None)
 
     class Meta:
         model = Enrollment
         fields = ['id','student','class_group','student_name','class_name','start_date','plan','plan_name','amount',
                   'administrative_status','cancelled_on','kind','created_at','eligibility', 'contract_version',
-                  'end_date', 'associated', 'payment_method', 'installments', 'fee_amount', 'renewed_from', 'schedule', 'financial_catalog', 'source_lead', 'capacity_exception_reason', 'benefit', 'benefit_snapshot']
-        read_only_fields = ['administrative_status','cancelled_on','created_at', 'contract_version', 'end_date', 'fee_amount', 'renewed_from', 'schedule', 'financial_catalog', 'benefit_snapshot']
+                  'end_date', 'associated', 'payment_method', 'installments', 'fee_amount', 'renewed_from', 'schedule', 'financial_catalog', 'source_lead', 'capacity_exception_reason', 'benefit', 'benefit_snapshot', 'is_minor', 'guardian', 'guardian_name', 'guardian_data']
+        read_only_fields = ['administrative_status','cancelled_on','created_at', 'contract_version', 'end_date', 'fee_amount', 'renewed_from', 'schedule', 'financial_catalog', 'benefit_snapshot', 'guardian', 'guardian_name']
         extra_kwargs = {'amount': {'required': False}}
 
     @extend_schema_field(EligibilitySerializer)
@@ -47,6 +63,10 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         return obj.administrative_status
 
     def validate(self, attrs):
+        if attrs.get('is_minor') is True and not attrs.get('guardian_data'):
+            raise serializers.ValidationError({'guardian_data': 'Informe o responsável pelo menor de idade.'})
+        if attrs.get('is_minor') is not True and attrs.get('guardian_data'):
+            raise serializers.ValidationError({'guardian_data': 'Informe o responsável somente para matrícula de menor de idade.'})
         if attrs.get('kind') == 'trial':
             raise DecisionRequired('Experimental aguarda política detalhada de duração, quantidade e condições.', ['DN-013'])
         student = attrs.get('student', getattr(self.instance, 'student', None))

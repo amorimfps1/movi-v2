@@ -188,7 +188,7 @@ it.each(cases)(
     const section = within(
       await screen.findByRole("region", { name: detail.region }),
     );
-    await section.findByText("26 registros · Página 1 de 2");
+    await section.findByText("Página 1 de 2");
     expect(
       section.getByRole("button", { name: "Página anterior" }),
     ).toBeDisabled();
@@ -201,7 +201,7 @@ it.each(cases)(
     ).toHaveLength(25);
 
     fireEvent.click(section.getByRole("button", { name: "Próxima página" }));
-    await section.findByText("26 registros · Página 2 de 2");
+    await section.findByText("Página 2 de 2");
     expect(
       section
         .getAllByRole("link")
@@ -216,9 +216,9 @@ it.each(cases)(
     expect(fetcher).toHaveBeenCalledWith(secondPagePath, expect.anything());
 
     fireEvent.click(section.getByRole("button", { name: "Página anterior" }));
-    await section.findByText("26 registros · Página 1 de 2");
+    await section.findByText("Página 1 de 2");
     fireEvent.click(section.getByRole("button", { name: "Próxima página" }));
-    await section.findByText("26 registros · Página 2 de 2");
+    await section.findByText("Página 2 de 2");
     fireEvent.click(screen.getByRole("link", { name: "Abrir outro cadastro" }));
     const newSection = within(
       await screen.findByRole("region", { name: detail.region }),
@@ -366,6 +366,6 @@ it("permite voltar ao início se a página de cobranças deixar de existir", asy
     charges.getByRole("button", { name: "Voltar à primeira página" }),
   );
   expect(
-    await charges.findByText("26 registros · Página 1 de 2"),
+    await charges.findByText("Página 1 de 2"),
   ).toBeInTheDocument();
 });

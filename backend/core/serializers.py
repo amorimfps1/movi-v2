@@ -75,10 +75,14 @@ class ReasonSerializer(serializers.Serializer):
 
 class PersonSerializer(serializers.ModelSerializer):
     cpf = CPFSerializerField(required=False, allow_blank=True, max_length=18)
+    has_guardianships = serializers.SerializerMethodField()
+
+    def get_has_guardianships(self, obj) -> bool:
+        return obj.has_guardianships if hasattr(obj, 'has_guardianships') else obj.guardian_enrollments.exists()
 
     class Meta:
         model = Person
-        fields = ["id", "name", "cpf", "email", "phone", "birth_date", "address", "notes", "archived", "created_at"]
+        fields = ["id", "name", "cpf", "email", "phone", "birth_date", "address", "notes", "archived", "created_at", "has_guardianships"]
         read_only_fields = ["id", "created_at"]
 
     def validate_email(self, value):
@@ -169,16 +173,50 @@ class ClassGroupSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class LeadTrialInputSerializer(serializers.Serializer):
+    lesson = serializers.IntegerField(min_value=1)
+    person = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    birth_date = serializers.DateField()
+    guardian_authorization = serializers.BooleanField(default=False)
+
+    def validate_birth_date(self, value):
+        from django.utils import timezone
+        if value > timezone.localdate():
+            raise serializers.ValidationError('A data de nascimento não pode estar no futuro.')
+        return value
+
+
+def latest_lead_trial(obj):
+    trials = list(obj.lead_trials.all())
+    return max(trials, key=lambda item: (item.created_at, item.pk)) if trials else None
+
+
+def lead_trial_info(obj):
+    trial = latest_lead_trial(obj)
+    return {'lesson': trial.lesson_id, 'class_name': trial.lesson.class_group.name,
+        'date': trial.lesson.date.isoformat(), 'status': trial.status} if trial else None
+
+
 class LeadSerializer(serializers.ModelSerializer):
     cpf = CPFSerializerField(required=False, allow_blank=True, max_length=18)
+    trial = LeadTrialInputSerializer(write_only=True, required=False)
+    trial_status = serializers.SerializerMethodField()
+    trial_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Lead
-        fields = ["id", "name", "cpf", "email", "phone", "source", "status", "interests", "notes", "student", "created_at"]
+        fields = ["id", "name", "cpf", "email", "phone", "source", "status", "interests", "notes", "student", "created_at", "trial", "trial_status", "trial_info"]
         read_only_fields = ["student", "created_at"]
 
     def validate_email(self, value):
         return value.strip().lower()
+
+    def get_trial_status(self, obj) -> str:
+        trial = latest_lead_trial(obj)
+        return trial.status if trial else ''
+
+    def get_trial_info(self, obj) -> dict | None:
+        return lead_trial_info(obj)
 
     def validate_status(self, value):
         if value == "converted" and (not self.instance or self.instance.status != "converted"):
@@ -194,6 +232,15 @@ class CommercialLeadSerializer(serializers.ModelSerializer):
     email = serializers.SerializerMethodField()
     phone = serializers.SerializerMethodField()
     whatsapp = serializers.SerializerMethodField()
+    trial_status = serializers.SerializerMethodField()
+    trial_info = serializers.SerializerMethodField()
+
+    def get_trial_status(self, obj) -> str:
+        trial = latest_lead_trial(obj)
+        return trial.status if trial else ''
+
+    def get_trial_info(self, obj) -> dict | None:
+        return lead_trial_info(obj)
 
     def _allowed(self, obj, channel):
         preference = next((item for item in obj.contact_preferences.all() if item.channel == channel and item.purpose == 'commercial'), None)
@@ -210,7 +257,7 @@ class CommercialLeadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lead
-        fields = ['id', 'name', 'email', 'phone', 'whatsapp', 'source', 'status', 'created_at']
+        fields = ['id', 'name', 'email', 'phone', 'whatsapp', 'source', 'status', 'created_at', 'trial_status', 'trial_info']
         read_only_fields = fields
 
 

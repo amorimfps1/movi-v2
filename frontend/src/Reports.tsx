@@ -43,7 +43,7 @@ export function Reports() {
       <PageTitle
         eyebrow="CONSULTA E ACOMPANHAMENTO"
         title="Relatórios"
-        description="Números com período, população e origem identificados."
+        description="Acompanhe os principais indicadores."
       />
       <form
         className="report-period sheet"
@@ -76,7 +76,6 @@ export function Reports() {
           />
         </Field>
         <Button type="submit">Consultar período</Button>
-        <span>Datas locais de São Paulo</span>
       </form>
       <ConversionReport start={period.start} end={period.end} />
       {admin && <AttritionReport start={period.start} end={period.end} />}
@@ -99,7 +98,7 @@ export function Reports() {
                   <div className="section-heading">
                     <div>
                       <p className="eyebrow">FINANCEIRO</p>
-                      <h2>Obrigações e valores recebidos</h2>
+                      <h2>Financeiro</h2>
                     </div>
                     <Link
                       className="text-link"
@@ -112,7 +111,7 @@ export function Reports() {
                     <div>
                       <span>Recebido líquido no período</span>
                       <strong>{money(query.data.received)}</strong>
-                      <small>Recebimentos por data de pagamento, menos devoluções por data de devolução.</small>
+                      <small>Recebimentos menos devoluções no período.</small>
                       <Link
                         className="text-link"
                         to={`/recebimentos?${new URLSearchParams(period)}`}
@@ -138,12 +137,12 @@ export function Reports() {
                       </div>
                     </dl>
                   </div>
-                  <p className="report-definition">
+                  <details className="report-definition"><summary>Como os valores são calculados</summary><p>
                     {String(
                       query.data.financial_definition ||
                         "Definição institucional pendente.",
                     )}
-                  </p>
+                  </p></details>
                   <div className="report-categories">
                     <h3>Recebido por finalidade</h3>
                     <table>
@@ -192,8 +191,7 @@ export function Reports() {
                     </div>
                   </dl>
                   <p className="report-definition">
-                    Contagens refletem a situação atual do cadastro. Matrícula
-                    regular não comprova elegibilidade para a aula.
+                    Dados atuais. Matrícula regular não garante liberação para a aula.
                   </p>
                 </aside>
               </div>
@@ -201,21 +199,18 @@ export function Reports() {
             <section className="sheet commercial-report">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">ACOLHIMENTO E CONVERSÃO</p>
-                  <h2>Do primeiro contato ao vínculo</h2>
+                  <h2>Leads e matrículas</h2>
                 </div>
               </div>
               <div className="commercial-flow">
                 <div>
                   <span>Leads no período</span>
                   <strong>{query.data.leads ?? 0}</strong>
-                  <small>População de origem</small>
                 </div>
                 <ArrowUpRight size={24} />
                 <div>
                   <span>Convertidos em aluno</span>
                   <strong>{query.data.conversions ?? 0}</strong>
-                  <small>Vínculo de conversão atual</small>
                 </div>
                 <ArrowUpRight size={24} />
                 <div>
@@ -223,31 +218,23 @@ export function Reports() {
                   <strong>
                     {String(query.data.converted_enrollments ?? "—")}
                   </strong>
-                  <small>Vínculos distintos de cadastro</small>
                 </div>
               </div>
-              <p className="report-definition">
+              <details className="report-definition"><summary>Como os dados são calculados</summary><p>
                 {String(
                   query.data.commercial_definition ||
                     "Leads criados no período; vínculo de conversão e matrículas apresentados separadamente. Não representa taxa de conversão.",
                 )}
-              </p>
+              </p></details>
             </section>
-            <Notice tone="warning">
-              Metas, frequência, alertas de evasão, ocupação e repasse final
-              aguardam definições institucionais. Não são apresentados como
-              resultados aprovados. DN-016, DN-018 e DN-019.
-            </Notice>
             {admin && (
               <section className="sheet export-section">
                 <div>
                   <FileSpreadsheet size={25} />
                   <div>
-                    <h2>Levar os registros para conferência</h2>
+                    <h2>Exportar registros</h2>
                     <p>
-                      CSV inclui todos os resultados autorizados. Cobranças usam
-                      vencimento; recebimentos usam pagamento e devoluções usam a data de devolução. Alunos refletem o
-                      cadastro atual.
+                      CSV: cobranças por vencimento, recebimentos por pagamento e devoluções por data. Alunos são dados atuais.
                     </p>
                   </div>
                 </div>
@@ -304,20 +291,18 @@ function AttritionReport({ start, end }: { start: string; end: string }) {
   const query = useApi<{ start: string; end: string; active_at_start: number; early_cancellations: number; normal_completions: number; unknown_end: number; unknown_cancellation: number; percent: string | null; definition: string }>(`reports/attrition/?${new URLSearchParams({ start, end })}`);
   return <section className="sheet section-pad"><h2>Evasão</h2>
     {query.isPending ? <Loading /> : query.error ? <ErrorNotice error={query.error} /> : typeof query.data?.active_at_start !== 'number' ? <Notice tone="error">Não foi possível interpretar a evasão recebida.</Notice> : query.data && <>
-      <p>De {date(query.data.start)} a {date(query.data.end)}. {query.data.definition}</p>
-      <p>Ativas no início: {query.data.active_at_start} · Cancelamentos antecipados: {query.data.early_cancellations} · Evasão: {query.data.percent === null ? 'Sem base definida' : `${Number(query.data.percent).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}</p>
-      <p>Conclusões normais: {query.data.normal_completions} · Sem fim conhecido: {query.data.unknown_end} · Sem data conhecida de cancelamento: {query.data.unknown_cancellation}</p>
+      <details className="report-method"><summary>Como é calculada</summary><p>{query.data.definition}</p></details>
+      <dl className="report-metrics"><div><dt>Evasão</dt><dd>{query.data.percent === null ? 'Sem base definida' : `${Number(query.data.percent).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`}</dd></div><div><dt>Ativas no início</dt><dd>{query.data.active_at_start}</dd></div><div><dt>Cancelamentos antecipados</dt><dd>{query.data.early_cancellations}</dd></div><div><dt>Conclusões normais</dt><dd>{query.data.normal_completions}</dd></div><div><dt>Sem fim conhecido</dt><dd>{query.data.unknown_end}</dd></div><div><dt>Sem data de cancelamento</dt><dd>{query.data.unknown_cancellation}</dd></div></dl>
     </>}
   </section>;
 }
 function ConversionReport({ start, end }: { start: string; end: string }) {
   const query = useApi<{ start: string; end: string; leads: number; converted_people: number; converted_enrollments: number; person_percent: string | null; enrollment_percent: string | null; definition: string }>(`reports/conversion/?${new URLSearchParams({ start, end })}`);
-  const percent = (value: string | null) => value === null ? 'Sem leads na coorte' : `${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
-  return <section className="sheet section-pad"><h2>Conversão da coorte de leads</h2>
+  const percent = (value: string | null) => value === null ? 'Sem leads' : `${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  return <section className="sheet section-pad"><h2>Conversão de leads</h2>
     {query.isPending ? <Loading /> : query.error ? <ErrorNotice error={query.error} /> : typeof query.data?.leads !== 'number' ? <Notice tone="error">Não foi possível interpretar a conversão recebida.</Notice> : query.data && <>
-      <p>Leads cadastrados de {date(query.data.start)} a {date(query.data.end)}: {query.data.leads}. {query.data.definition}</p>
-      <p>Pessoas vinculadas: {query.data.converted_people} · {percent(query.data.person_percent)}</p>
-      <p>Leads com matrícula atribuída: {query.data.converted_enrollments} · {percent(query.data.enrollment_percent)}</p>
+      <dl className="report-metrics"><div><dt>Leads no período</dt><dd>{query.data.leads}</dd></div><div><dt>Pessoas vinculadas</dt><dd>{query.data.converted_people} <small>{percent(query.data.person_percent)}</small></dd></div><div><dt>Leads com matrícula atribuída</dt><dd>{query.data.converted_enrollments} <small>{percent(query.data.enrollment_percent)}</small></dd></div></dl>
+      <details className="report-method"><summary>Como é calculada</summary><p>{query.data.definition}</p></details>
     </>}
   </section>;
 }
@@ -327,9 +312,10 @@ function FrequencyReport() {
   const [configuring, setConfiguring] = useState(false);
   const query = useApi<{ on: string; definition: string; short_days: number; long_days: number; absence_threshold: number; enrollments: { enrollment: number; person: string; class_name: string; short_window: Window; long_window: Window; consecutive_absences: number; alert: boolean }[] }>('reports/frequency/');
   const percent = (value: string | null) => value === null ? 'Sem registros' : `${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
-  return <section className="sheet section-pad"><div className="section-heading"><h2>Frequência e faltas</h2>{user?.roles.includes('coordinator') && query.data && <Button variant="secondary" onClick={() => setConfiguring(true)}>Configurar indicador</Button>}</div>
+  return <section className="sheet section-pad"><div className="report-frequency-heading"><h2>Frequência e faltas</h2>{user?.roles.includes('coordinator') && query.data && <Button variant="secondary" onClick={() => setConfiguring(true)}>Configurar indicador</Button>}</div>
     {query.isPending ? <Loading /> : query.error ? <ErrorNotice error={query.error} /> : !Array.isArray(query.data?.enrollments) ? <Notice tone="error">Não foi possível interpretar a frequência recebida.</Notice> : query.data && <>
-      <p>Posição em {date(query.data.on)}. {query.data.definition} Alerta a partir de {query.data.absence_threshold} faltas consecutivas.</p>
+      <p>Em {date(query.data.on)} · Alerta a partir de {query.data.absence_threshold} faltas consecutivas.</p>
+      <details className="report-method"><summary>Como é calculada</summary><p>{query.data.definition}</p></details>
       {!query.data.enrollments.length ? <p>Nenhuma matrícula regular vigente.</p> : <div className="table-wrap"><table><thead><tr><th>Aluno</th><th>Turma</th><th>{query.data.short_days} dias</th><th>{query.data.long_days} dias</th><th>Faltas consecutivas</th></tr></thead><tbody>
         {query.data.enrollments.map((row) => <tr key={row.enrollment}><td><Link to={`/matriculas/${row.enrollment}`}>{row.person}</Link></td><td>{row.class_name}</td><td>{percent(row.short_window.percent)}</td><td>{percent(row.long_window.percent)}</td><td>{row.consecutive_absences}{row.alert ? ' · Atenção' : ''}</td></tr>)}
       </tbody></table></div>}
@@ -347,7 +333,8 @@ function OccupancyReport() {
   return <section className="sheet section-pad">
     <h2>Ocupação das turmas</h2>
     {query.isPending ? <Loading /> : query.error ? <ErrorNotice error={query.error} /> : !Array.isArray(query.data?.classes) ? <Notice tone="error">Não foi possível interpretar a ocupação recebida.</Notice> : query.data && <>
-      <p>Posição em {date(query.data.on)}. {query.data.definition}</p>
+      <p>Posição em {date(query.data.on)}.</p>
+      <details className="report-method"><summary>Como é calculada</summary><p>{query.data.definition}</p></details>
       {!query.data.classes.length ? <p>Nenhuma turma ativa.</p> : <div className="table-wrap"><table><thead><tr><th>Turma</th><th>Matrículas</th><th>Capacidade</th><th>Ocupação</th><th>Experimentais</th><th>Espera</th></tr></thead><tbody>
         {query.data.classes.map((group) => <tr key={group.class_group}><td><Link to={`/turmas/${group.class_group}`}>{group.name}</Link></td><td>{group.regular}</td><td>{group.capacity}</td><td>{Number(group.percent).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</td><td>{group.experimental}</td><td>{group.waiting}</td></tr>)}
       </tbody></table></div>}

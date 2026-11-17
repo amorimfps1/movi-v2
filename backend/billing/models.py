@@ -106,6 +106,8 @@ class Enrollment(models.Model):
     renewed_from = models.OneToOneField('self', null=True, blank=True, on_delete=models.PROTECT, related_name='renewal', editable=False)
     schedule = models.JSONField(default=list, editable=False)
     student = models.ForeignKey('core.Person', on_delete=models.PROTECT, related_name='enrollments')
+    is_minor = models.BooleanField(null=True, default=None)
+    guardian = models.ForeignKey('core.Person', null=True, blank=True, on_delete=models.PROTECT, related_name='guardian_enrollments')
     class_group = models.ForeignKey('core.ClassGroup', on_delete=models.PROTECT, related_name='enrollments')
     start_date = models.DateField()
     plan = models.CharField(max_length=40)
@@ -117,7 +119,8 @@ class Enrollment(models.Model):
 
     class Meta:
         ordering = ['-id']
-        constraints = [models.CheckConstraint(condition=Q(amount__gt=0) | Q(amount=0, benefit__isnull=False), name='enrollment_amount_valid')]
+        constraints = [models.CheckConstraint(condition=Q(amount__gt=0) | Q(amount=0, benefit__isnull=False), name='enrollment_amount_valid'),
+            models.CheckConstraint(condition=(Q(is_minor=True, guardian__isnull=False) | Q(is_minor=False, guardian__isnull=True) | Q(is_minor__isnull=True, guardian__isnull=True)), name='enrollment_guardian_consistent')]
 
 
 class CommercialCondition(models.Model):

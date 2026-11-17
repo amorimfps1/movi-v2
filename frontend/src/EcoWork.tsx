@@ -21,10 +21,12 @@ const coverage: Record<string, string> = { awaiting_payment: 'Aguardando pagamen
 export const personSpec: ResourceSpec = {
   ...studentSpec, title: 'Pessoas', singular: 'pessoa', slug: 'pessoas', endpoint: 'people/',
   description: 'Cadastro compartilhado entre atividades acadêmicas e EcoWork.',
-  columns: studentSpec.columns.map(c => c.key === 'name' ? { ...c, label: 'Pessoa' } : c),
+  columns: [...studentSpec.columns.map(c => c.key === 'name' ? { ...c, label: 'Pessoa' } : c),
+    { key: 'has_guardianships', label: 'Categoria', render: row => row.has_guardianships ? 'Responsável' : '—' }],
   filters: [...(studentSpec.filters || []),
     { key: 'has_enrollments', label: 'Matrícula acadêmica', options: [{ value: 'true', label: 'Com matrícula' }, { value: 'false', label: 'Sem matrícula' }] },
     { key: 'has_ecowork', label: 'Contratação EcoWork', options: [{ value: 'true', label: 'Com contratação' }, { value: 'false', label: 'Sem contratação' }] },
+    { key: 'has_guardianships', label: 'Responsável', options: [{ value: 'true', label: 'Responsáveis' }, { value: 'false', label: 'Sem vínculo' }] },
   ],
 };
 export const condominiumSpec: ResourceSpec = {
@@ -102,8 +104,8 @@ export function EcoWork() {
           <td>{order.billing_mode === 'card' ? 'Compra no cartão' : `Parcela ${charge.number}/${order.charges.length}`}</td><td>{date(charge.due_date)}</td><td>{money(charge.amount)}</td><td><Badge value={charge.status} /></td>
           <td>{charge.payment ? <span>Confirmado em {date(charge.payment.paid_on)}<small>Operador #{charge.payment.actor} · {charge.payment.reference || charge.payment.method}</small></span> : charge.status === 'cancelled' ? <span>Cobran?a cancelada</span> : <Button variant="secondary" disabled={charge.number > 1 && !order.charges.some(c => c.number === 1 && c.payment)} onClick={() => setPayment({ order, charge })}>Registrar pagamento</Button>}
           {charge.payment && <div className="ecowork-financial-buttons">
-            {!(charge.payment.refunds?.length) && <Button variant="secondary" onClick={() => setFinancialAction({ action: 'void', order, payment: charge.payment! })}>Corrigir lan?amento</Button>}
-            {Math.round(Number(charge.payment.amount) * 100) > (charge.payment.refunds || []).reduce((sum, refund) => sum + Math.round(Number(refund.amount) * 100), 0) && <Button variant="secondary" onClick={() => setFinancialAction({ action: 'refund', order, payment: charge.payment! })}>Registrar devolu??o</Button>}
+            {!(charge.payment.refunds?.length) && <Button variant="secondary" onClick={() => setFinancialAction({ action: 'void', order, payment: charge.payment! })}>Corrigir lançamento</Button>}
+            {Math.round(Number(charge.payment.amount) * 100) > (charge.payment.refunds || []).reduce((sum, refund) => sum + Math.round(Number(refund.amount) * 100), 0) && <Button variant="secondary" onClick={() => setFinancialAction({ action: 'refund', order, payment: charge.payment! })}>Registrar devolução</Button>}
           </div>}
           </td>
         </tr>)}</tbody></table></div>
@@ -189,7 +191,7 @@ function ReceivePayment({ charge, order, onClose }: { charge: Charge; order: Ord
     <Field label="Data do pagamento"><input type="date" value={paidOn} max={today()} required onChange={e => { setPaidOn(e.target.value); change(); }} /></Field>
     <Field label="Meio de pagamento"><select value={method} onChange={e => { setMethod(e.target.value); change(); }}>{(order.billing_mode === 'card' ? [['card', 'Cartão']] : [['pix', 'Pix'], ['cash', 'Dinheiro'], ['card', 'Cartão'], ['transfer', 'Transferência'], ['other', 'Outro']]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
     <Field label="Referência do pagamento" hint={order.billing_mode === 'card' ? 'Informe a referência da compra aprovada no cartão.' : 'Opcional.'}><input maxLength={160} required={order.billing_mode === 'card'} value={reference} onChange={e => { setReference(e.target.value); change(); }} /></Field>
-    <label className="ecowork-check"><input type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />{order.billing_mode === 'card' ? 'Conferi a aprovação da compra no cartão.' : 'Conferi o recebimento integral deste valor.'}</label>
+    <label className="ecowork-check"><input className="toggle" role="switch" type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />{order.billing_mode === 'card' ? 'Conferi a aprovação da compra no cartão.' : 'Conferi o recebimento integral deste valor.'}</label>
     <ErrorNotice error={error} /><div className="form-actions"><Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={!confirmed}>{pending ? 'Registrando…' : 'Confirmar pagamento'}</Button></div>
   </fieldset></form></Modal>;
 }

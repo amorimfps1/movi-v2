@@ -38,7 +38,7 @@ class TrialViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         return qs.none()
 
     @transaction.atomic
-    def perform_create(self, serializer):
+    def perform_create(self, serializer, lead=None):
         actor = lock_admin(self.request.user)
         lock_student_identities()
         lesson_ref = serializer.validated_data['lesson']
@@ -61,7 +61,7 @@ class TrialViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Crea
         trial_count = TrialParticipation.objects.filter(lesson=lesson, status__in=['scheduled', 'completed']).count()
         if regular + trial_count >= group.capacity:
             raise ValidationError('A aula não possui vaga para participação experimental.')
-        trial = serializer.save(person=person, lesson=lesson, modality=group.modality, actor=actor)
+        trial = serializer.save(person=person, lesson=lesson, modality=group.modality, actor=actor, lead=lead)
         record(actor, 'trial.scheduled', trial, metadata={'person': person.pk, 'lesson': lesson.pk, 'modality': group.modality_id, 'guardian_authorization': trial.guardian_authorization})
 
     @extend_schema(request=TrialMarkSerializer, responses=TrialSerializer)

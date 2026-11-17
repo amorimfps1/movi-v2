@@ -27,6 +27,7 @@ export function FinancialCatalog() {
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [removedPrice, setRemovedPrice] = useState<{ price: Price; index: number } | null>(null);
   const current = catalogs.data?.find((row) => Number(row.id) === selected) as Catalog | undefined;
   const editable = !current || current.status === "draft";
   async function run(action: () => Promise<void>) {
@@ -36,23 +37,24 @@ export function FinancialCatalog() {
   function choose(catalog?: Catalog) {
     setSelected(catalog?.id ?? null); setStart(catalog?.effective_from ?? ""); setEnd(catalog?.effective_until ?? "");
     const next = catalog ? structuredClone(catalog.configuration) : initial();
-    setConfig(next); setInstallmentText(Object.fromEntries(Object.entries(next.plans).map(([key, plan]) => [key, plan.installments.join(", ")]))); setPreview(null); setReason(""); setDirty(false);
+    setConfig(next); setInstallmentText(Object.fromEntries(Object.entries(next.plans).map(([key, plan]) => [key, plan.installments.join(", ")]))); setPreview(null); setReason(""); setDirty(false); setRemovedPrice(null);
   }
   async function save() {
     const plans = Object.fromEntries(Object.entries(config.plans).map(([key, plan]) => [key, { ...plan, installments: (installmentText[key] || "").split(",").map((v) => Number(v.trim())) }]));
     const body = { effective_from: start, effective_until: end || null, configuration: { ...config, plans } };
     const result = selected ? await patch<Catalog>(`financial-catalogs/${selected}/`, body) : await post<Catalog>("financial-catalogs/", body);
-    setSelected(result.id); setPreview(null); setDirty(false); await client.invalidateQueries({ queryKey: ["financial-catalogs"] }); setNotice("Rascunho salvo.");
+    setSelected(result.id); setPreview(null); setDirty(false); setRemovedPrice(null); await client.invalidateQueries({ queryKey: ["financial-catalogs"] }); setNotice("Rascunho salvo.");
   }
   if (catalogs.isPending) return <Loading />;
   if (catalogs.error) return <ErrorNotice error={catalogs.error} />;
   return <>
     <PageTitle eyebrow="COORDENAÇÃO" title="Tabelas financeiras" description="Organize planos, preços e taxas por período. Contratos anteriores preservam suas condições." />
     {notice && <Notice tone="success">{notice}</Notice>}<ErrorNotice error={error} />
-    <section className="sheet">
-      <Field label="Versão da tabela"><select value={selected ?? ""} onChange={(e) => choose(catalogs.data?.find((r) => Number(r.id) === Number(e.target.value)) as Catalog | undefined)}>
+    <section className="sheet section-pad catalog-editor">
+      <Field label="Versão da tabela"><select value={selected ?? ""} onChange={(e) => { if (!dirty || window.confirm('Descartar as alterações não salvas e trocar de versão?')) choose(catalogs.data?.find((r) => Number(r.id) === Number(e.target.value)) as Catalog | undefined); }}>
         <option value="">Novo rascunho</option>{catalogs.data?.map((row) => <option key={Number(row.id)} value={Number(row.id)}>Versão {String(row.version)} · {row.status === "published" ? "Publicada" : "Rascunho"} · {String(row.effective_from)}</option>)}
       </select></Field>
+      <div className="catalog-status"><strong>{current?.status === "published" ? "Tabela publicada" : dirty ? "Alterações não salvas" : selected ? "Rascunho salvo" : "Novo rascunho"}</strong><span>{current?.status === "published" ? "Para alterar valores, crie uma nova versão." : "1. Edite os dados · 2. Salve e confira · 3. Publique"}</span></div>
       {current?.status === 'published' && <div className="form-actions"><Button type="button" variant="secondary" onClick={() => { const copy = structuredClone(config); choose(); setConfig(copy); setInstallmentText(Object.fromEntries(Object.entries(copy.plans).map(([key, plan]) => [key, plan.installments.join(', ')]))); setDirty(true); }}>Criar nova versão com estes dados</Button><Button type="button" variant="secondary" onClick={() => setEnding(true)}>Encerrar vigência</Button></div>}
       {ending && current && <ActionForm title="Encerrar vigência da tabela" endpoint={`financial-catalogs/${current.id}/end/`} description="O fim não pode ser retroativo. Contratos existentes preservam suas condições."
         fields={[{ key: 'effective_until', label: 'Último dia de vigência', type: 'date', required: true }, { key: 'reason', label: 'Justificativa', type: 'textarea', required: true, wide: true }]}
@@ -61,29 +63,33 @@ export function FinancialCatalog() {
         <fieldset disabled={!editable || pending}>
           <div className="form-grid"><Field label="Vigência a partir de"><input type="date" required value={start} onChange={(e) => setStart(e.target.value)} /></Field>
             <Field label="Vigência até (opcional)"><input type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} /></Field></div>
-          <h2>Vencimentos</h2>
+          <div className="catalog-section-heading"><h2>Vencimentos</h2><p>Defina quando as parcelas devem vencer.</p></div>
           <div className="form-grid"><Field label="Primeiro vencimento"><select value={config.due_rule ?? "15_end"} onChange={(e) => setConfig({ ...config, due_rule: e.target.value })}><option value="15_end">Dia 15 ou último dia do mês</option><option value="start">Data de início do contrato</option><option value="fixed">Dia fixo</option></select></Field>
             {config.due_rule === "fixed" && <Field label="Dia fixo"><input type="number" min="1" max="31" required value={config.due_day ?? ""} onChange={(e) => setConfig({ ...config, due_day: Number(e.target.value) })} /></Field>}
             <Field label="Referência das parcelas seguintes"><select value={config.due_reference ?? "start"} onChange={(e) => setConfig({ ...config, due_reference: e.target.value })}><option value="start">Dia de início do contrato</option><option value="first_due">Dia do primeiro vencimento</option></select></Field></div>
-          <h2>Planos e parcelamento</h2>
+          <div className="catalog-section-heading"><h2>Planos e parcelamento</h2><p>Escolha os planos e informe as opções de parcelas, como 1, 2, 3.</p></div>
           {[...Object.entries(labels), ...Object.keys(config.plans).filter((key) => !(key in labels)).map((key): [string, string] => [key, config.plans[key].name || 'Plano personalizado'])].map(([key, label]) => <div className="form-grid" key={key}>
-            <label className="check-option"><input type="checkbox" checked={!!config.plans[key]} onChange={(e) => { const plans = { ...config.plans }; if (e.target.checked) { plans[key] = { months: 1, installments: [1] }; setInstallmentText({ ...installmentText, [key]: "1" }); } else delete plans[key]; setConfig({ ...config, plans }); }} />{label}</label>
+            <label className="check-option"><input className="toggle" role="switch" type="checkbox" checked={!!config.plans[key]} disabled={config.prices.some((price) => price.plan === key)} onChange={(e) => { const plans = { ...config.plans }; if (e.target.checked) { plans[key] = { months: 1, installments: [1] }; setInstallmentText({ ...installmentText, [key]: "1" }); } else delete plans[key]; setConfig({ ...config, plans }); }} />{label}{config.prices.some((price) => price.plan === key) && <small>Remova ou altere os preços vinculados para retirar este plano.</small>}</label>
             {config.plans[key] && <><Field label={`Nome de ${label}`}><input required maxLength={120} value={config.plans[key].name ?? labels[key] ?? ''} onChange={(e) => setConfig({ ...config, plans: { ...config.plans, [key]: { ...config.plans[key], name: e.target.value } } })} /></Field>
               <Field label={`Duração de ${label} em meses`}><input type="number" min="1" max="120" required value={config.plans[key].months} onChange={(e) => setConfig({ ...config, plans: { ...config.plans, [key]: { ...config.plans[key], months: Number(e.target.value) } } })} /></Field>
               <Field label={`Parcelas permitidas para ${label}`} hint="Números separados por vírgula"><input required value={installmentText[key] ?? ""} onChange={(e) => setInstallmentText({ ...installmentText, [key]: e.target.value })} /></Field></>}
           </div>)}
           <Button type="button" variant="secondary" onClick={() => { const key = `p_${crypto.randomUUID().replaceAll('-', '').slice(0, 20)}`; setDirty(true); setPreview(null); setConfig({ ...config, plans: { ...config.plans, [key]: { name: '', months: 1, installments: [1] } } }); setInstallmentText({ ...installmentText, [key]: '1' }); }}>Adicionar plano personalizado</Button>
-          <h2>Preços por categoria</h2>
-          {config.prices.map((price, index) => <div className="form-grid" key={index}>
+          <div className="catalog-section-heading"><h2>Preços por categoria <span className="catalog-count">{config.prices.length}</span></h2><p>Cadastre um valor para cada combinação de categoria, plano, pagamento e associação. Ao copiar um preço, altere a combinação para evitar duplicidade.</p></div>
+          {config.prices.length === 0 && <p className="catalog-empty">Nenhum preço cadastrado. Adicione o primeiro valor abaixo.</p>}
+          {config.prices.map((price, index) => <section className="catalog-item" key={index}>
+            <div className="catalog-item-heading"><div><strong>Preço {index + 1}</strong><span>Categoria {price.category} · {config.plans[price.plan]?.name || labels[price.plan] || "Plano"} · {price.method === "card" ? "Cartão" : "Boleto"} · {price.associated ? "Associado" : "Não associado"}</span></div></div><div className="form-grid">
             <Field label="Categoria"><input type="number" min="1" max="7" value={price.category} onChange={(e) => setConfig({ ...config, prices: config.prices.map((p, i) => i === index ? { ...p, category: Number(e.target.value) } : p) })} /></Field>
             <Field label="Plano"><select value={price.plan} onChange={(e) => setConfig({ ...config, prices: config.prices.map((p, i) => i === index ? { ...p, plan: e.target.value } : p) })}>{Object.keys(config.plans).map((key) => <option key={key} value={key}>{config.plans[key].name || labels[key] || 'Plano personalizado'}</option>)}</select></Field>
             <Field label="Pagamento"><select value={price.method} onChange={(e) => setConfig({ ...config, prices: config.prices.map((p, i) => i === index ? { ...p, method: e.target.value } : p) })}><option value="card">Cartão</option><option value="boleto">Boleto</option></select></Field>
-            <Field label="Associação"><select value={String(price.associated)} onChange={(e) => setConfig({ ...config, prices: config.prices.map((p, i) => i === index ? { ...p, associated: e.target.value === "true" } : p) })}><option value="false">Não associado</option><option value="true">Associado</option></select></Field>
+            <Field label="Associado"><input className="toggle" role="switch" type="checkbox" checked={price.associated} onChange={(e) => setConfig({ ...config, prices: config.prices.map((p, i) => i === index ? { ...p, associated: e.target.checked } : p) })} /></Field>
             <Field label="Valor total (R$)"><input type="number" min="0.01" step="0.01" required value={price.amount} onChange={(e) => setConfig({ ...config, prices: config.prices.map((p, i) => i === index ? { ...p, amount: e.target.value } : p) })} /></Field>
-            <Button type="button" variant="secondary" onClick={() => { setDirty(true); setPreview(null); setConfig({ ...config, prices: config.prices.filter((_, i) => i !== index) }); }}>Remover preço</Button>
-          </div>)}
+            </div><div className="catalog-item-actions"><Button type="button" variant="ghost" onClick={() => { setDirty(true); setPreview(null); setConfig({ ...config, prices: [...config.prices, { ...price }] }); }}>Copiar preço {index + 1}</Button>
+            <Button type="button" variant="ghost" onClick={() => { setDirty(true); setPreview(null); setRemovedPrice({ price, index }); setConfig({ ...config, prices: config.prices.filter((_, i) => i !== index) }); }}>Remover preço {index + 1}</Button></div>
+          </section>)}
+          {removedPrice && <div className="catalog-undo" role="status">Preço removido do rascunho. <Button type="button" variant="ghost" onClick={() => { setConfig({ ...config, prices: [...config.prices.slice(0, removedPrice.index), removedPrice.price, ...config.prices.slice(removedPrice.index)] }); setRemovedPrice(null); setDirty(true); setPreview(null); }}>Desfazer remoção</Button></div>}
           <Button type="button" variant="secondary" disabled={!Object.keys(config.plans).length} onClick={() => { setDirty(true); setPreview(null); setConfig({ ...config, prices: [...config.prices, { category: 1, plan: Object.keys(config.plans)[0], method: "card", associated: false, amount: "" }] }); }}>Adicionar preço</Button>
-          <h2>Taxas de matrícula</h2>
+          <div className="catalog-section-heading"><h2>Taxas de matrícula</h2><p>Informe os valores por tipo de matrícula e associação.</p></div>
           {Object.entries(config.fees).map(([kind, fee]) => <div className="form-grid" key={kind}>{(["associated", "non_associated"] as const).map((key) => <Field key={key} label={`${kind === "standard" ? "Convencional" : "Rítmica"} · ${key === "associated" ? "associado" : "não associado"}`}><input type="number" min="0" step="0.01" required value={fee[key]} onChange={(e) => setConfig({ ...config, fees: { ...config.fees, [kind]: { ...fee, [key]: e.target.value } } })} /></Field>)}</div>)}
           <Field label="Limite de desconto da Coordenação (%)" hint="Percentuais maiores exigem autorização institucional registrada."><input type="number" min="0" max="100" step="0.01" value={config.discount_limit_percent ?? '20.00'} onChange={(e) => setConfig({ ...config, discount_limit_percent: e.target.value })} required /></Field>
           <div className="form-actions"><Button type="submit">Salvar rascunho</Button></div>

@@ -28,6 +28,7 @@ import {
   Journey,
   Notice,
   Field,
+  SearchableSelect,
 } from "./ui";
 import { date, money, label } from "./format";
 export function ResourceList({
@@ -118,7 +119,6 @@ export function ResourceList({
       <PageTitle
         eyebrow={eyebrow}
         title={spec.title}
-        description={spec.description}
         actions={
           <>
             {canExport && (
@@ -229,7 +229,11 @@ export function ResourceList({
           <div className="additional-filters">
             {spec.filterFields.map((field) => (
               <Field key={field.key} label={field.label}>
-                {field.type === "select" ? (
+                {(field.type === "lookup" || field.type === "select") && field.lookup ? (
+                  <SearchableSelect value={filters[field.key] || ""} onChange={(value) => changeQuery({ [field.key]: value })}
+                    disabled={filterQueries[filterPaths.indexOf(field.lookup)]?.isPending}
+                    options={(filterQueries[filterPaths.indexOf(field.lookup)]?.data ?? []).map((row) => ({ value: Number(row.id), label: field.optionLabel?.(row) ?? String(row.name || row.email || `#${row.id}`) }))} />
+                ) : field.type === "select" ? (
                   <select
                     value={filters[field.key] || ""}
                     onChange={(event) => {

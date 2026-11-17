@@ -16,7 +16,7 @@ export function ContactPreferences({ kind, id }: { kind: 'lead' | 'person'; id: 
     {editing && <ActionForm title="Registrar preferência de contato" endpoint="contact-preferences/" fields={[
       { key: 'channel', label: 'Canal', type: 'select', required: true, options: [{ value: 'email', label: 'E-mail' }, { value: 'phone', label: 'Telefone' }, { value: 'whatsapp', label: 'WhatsApp' }] },
       { key: 'purpose', label: 'Finalidade', type: 'select', required: true, options: [{ value: 'commercial', label: 'Comercial' }, { value: 'administrative', label: 'Administrativa' }] },
-      { key: 'allowed', label: 'Preferência', type: 'select', required: true, options: [{ value: 'true', label: 'Autoriza contato' }, { value: 'false', label: 'Não autoriza contato' }] },
-    ]} transform={(values) => ({ ...values, [kind]: Number(id), allowed: values.allowed === 'true' })} onClose={() => setEditing(false)} />}
+      { key: 'allowed', label: 'Autoriza contato', type: 'check', default: false },
+    ]} transform={(values) => ({ ...values, [kind]: Number(id), allowed: !!values.allowed })} onClose={() => setEditing(false)} />}
   </section>;
 }

@@ -10,13 +10,15 @@ def with_person_links(queryset):
     return queryset.annotate(
         has_enrollments=Exists(Enrollment.objects.filter(student_id=OuterRef('pk'))),
         has_ecowork=Exists(Order.objects.filter(person_id=OuterRef('pk'))),
+        has_guardianships=Exists(Enrollment.objects.filter(guardian_id=OuterRef('pk'))),
     )
 
 
 class PersonFilter(filters.FilterSet):
     has_enrollments = filters.BooleanFilter()
     has_ecowork = filters.BooleanFilter()
+    has_guardianships = filters.BooleanFilter()
 
     class Meta:
         model = Person
-        fields = ['archived', 'has_enrollments', 'has_ecowork']
+        fields = ['archived', 'has_enrollments', 'has_ecowork', 'has_guardianships']

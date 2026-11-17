@@ -60,7 +60,7 @@ export function FinancialAction({ action, order, payment, onClose }: { action: '
         <Notice>Registre somente o valor já devolvido. A cobrança continuará quitada e a cobertura do plano não será alterada. Esta ação não transfere dinheiro.</Notice>
       </>}
       <Field label="Motivo"><textarea required maxLength={2000} value={reason} onChange={e => { setReason(e.target.value); change(); }} /></Field>
-      <label className="ecowork-check"><input type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />{action === 'refund' ? 'Conferi a devolução efetiva deste valor.' : 'Conferi o motivo e o efeito desta operação.'}</label>
+      <label className="ecowork-check"><input className="toggle" role="switch" type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />{action === 'refund' ? 'Conferi a devolução efetiva deste valor.' : 'Conferi o motivo e o efeito desta operação.'}</label>
       <ErrorNotice error={error} />
       <div className="form-actions"><Button type="button" variant="secondary" onClick={onClose}>Voltar</Button><Button type="submit" disabled={!confirmed || !reason.trim() || (action === 'cancel' && !mode)}>{pending ? 'Registrando…' : title}</Button></div>
     </fieldset></form>

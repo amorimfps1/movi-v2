@@ -109,12 +109,18 @@ def convert_lead(actor, lead_id, data):
     cpf_ids = set(Person.objects.filter(cpf=lead.cpf).values_list("id", flat=True)) if lead.cpf else set()
     email_ids = set(Person.objects.filter(email__iexact=lead.email).values_list("id", flat=True)) if lead.email else set()
     candidate_ids = cpf_ids | email_ids
+    trial_person_ids = set(lead.lead_trials.values_list('person_id', flat=True))
+    if len(trial_person_ids) > 1:
+        raise ValidationError({'student_id': 'As experimentais deste lead possuem pessoas diferentes. Revise os cadastros antes da conversão.'})
+    candidate_ids |= trial_person_ids
     cpf_conflict = bool(lead.cpf and Person.objects.filter(pk__in=email_ids).exclude(cpf__in=["", lead.cpf]).exists())
     conflict = len(candidate_ids) > 1 or cpf_conflict
     selected_id = data.get("student_id")
     if conflict and selected_id is None:
         raise DecisionRequired("CPF ou e-mail correspondem a mais de um aluno. Confira os cadastros e informe student_id e reason para resolver a identidade.", ["RN-015", "DN-003"])
     if selected_id is not None:
+        if trial_person_ids and selected_id not in trial_person_ids:
+            raise ValidationError({'student_id': 'Selecione a pessoa vinculada à aula experimental deste lead.'})
         if conflict and not data.get("reason"):
             raise ValidationError({"reason": "Registre a justificativa da resolução de identidade."})
         student = Person.objects.select_for_update().filter(pk=selected_id).first()

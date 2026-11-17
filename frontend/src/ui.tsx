@@ -86,7 +86,7 @@ export function ErrorNotice({ error }: { error: unknown }) {
 }
 export function Empty({
   title = "Ainda não há registros",
-  description = "Os registros cadastrados aparecerão aqui.",
+  description,
   action,
 }: {
   title?: string;
@@ -99,7 +99,7 @@ export function Empty({
         <Inbox size={28} />
       </span>
       <h3>{title}</h3>
-      <p>{description}</p>
+      {description && <p>{description}</p>}
       {action}
     </div>
   );
@@ -171,6 +171,93 @@ export function Field({
 }
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} />;
+}
+export function SearchableSelect({
+  value, options, onChange, required, disabled, id, ...inputProps
+}: {
+  value: string;
+  options: { value: string | number; label: string }[];
+  onChange: (value: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+  id?: string;
+  "aria-describedby"?: string;
+  "aria-labelledby"?: string;
+}) {
+  const listId = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const emitted = useRef<string | undefined>(undefined);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [active, setActive] = useState(0);
+  const counts = new Map<string, number>();
+  options.forEach((option) => counts.set(option.label, (counts.get(option.label) ?? 0) + 1));
+  const choices = options.map((option) => ({
+    ...option,
+    text: (counts.get(option.label) ?? 0) > 1
+      ? `${option.label} (#${option.value})` : option.label,
+  }));
+  const labelFor = (selected: string) => choices.find((option) => String(option.value) === selected)?.text ?? (selected ? `#${selected}` : "");
+  const [text, setText] = useState(() => labelFor(value));
+  const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  const matches = editing && text ? choices.filter((option) => normalize(option.text).includes(normalize(text))) : choices;
+  const select = (option: typeof choices[number]) => {
+    const nextValue = String(option.value);
+    setText(option.text);
+    setEditing(false);
+    setOpen(false);
+    input.current?.setCustomValidity("");
+    if (nextValue !== value) { emitted.current = nextValue; onChange(nextValue); }
+    input.current?.focus();
+  };
+  useEffect(() => {
+    if (emitted.current === value) { emitted.current = undefined; return; }
+    setText(labelFor(value));
+    input.current?.setCustomValidity("");
+  // Options are loaded before this control mounts; value changes also cover resets.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+  return <div className="searchable-select">
+    <input {...inputProps} ref={input} id={id} type="text" value={text}
+      role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={listId}
+      aria-activedescendant={open && matches[active] ? `${listId}-option-${active}` : undefined}
+      placeholder="Pesquisar pelo nome…" autoComplete="off" required={required} disabled={disabled}
+      onFocus={() => { setOpen(true); setActive(0); }}
+      onClick={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          if (!open) { setOpen(true); setActive(0); }
+          else setActive((current) => Math.max(0, Math.min(matches.length - 1, current + (event.key === "ArrowDown" ? 1 : -1))));
+        } else if (event.key === "Enter" && open && matches[active]) {
+          event.preventDefault();
+          select(matches[active]);
+        } else if (event.key === "Escape" && open) {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}
+      onChange={(event) => {
+        const next = event.target.value;
+        const match = choices.find((option) => option.text === next);
+        const nextValue = match ? String(match.value) : "";
+        event.target.setCustomValidity(next && !match ? "Selecione uma opção da lista." : "");
+        setText(next);
+        setEditing(true);
+        setOpen(true);
+        setActive(0);
+        if (nextValue !== value) { emitted.current = nextValue; onChange(nextValue); }
+      }} />
+    {open && <div className="searchable-select__menu" id={listId} role="listbox">
+      {matches.length ? matches.map((option, index) => <div key={option.value} id={`${listId}-option-${index}`}
+        role="option" aria-selected={String(option.value) === value}
+        className={`searchable-select__option${index === active ? " searchable-select__option--active" : ""}`}
+        onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActive(index)} onClick={() => select(option)}>{option.text}</div>)
+        : <div className="searchable-select__empty">Nenhuma opção encontrada</div>}
+    </div>}
+  </div>;
 }
 export function Modal({
   open,
@@ -274,8 +361,8 @@ export function Pagination({
   return (
     <div className="pagination">
       <span>
-        {count} {count === 1 ? "registro" : "registros"} · Página {page} de{" "}
-        {pages}
+        {count} {count === 1 ? "registro" : "registros"}
+        <span className="pagination__page">Página {page} de {pages}</span>
       </span>
       <div>
         <Button

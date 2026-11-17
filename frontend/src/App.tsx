@@ -9,23 +9,12 @@ import {
   useLocation,
 } from "react-router-dom";
 import {
-  LayoutDashboard,
-  UsersRound,
-  ContactRound,
-  Shapes,
-  CalendarDays,
-  GraduationCap,
-  Wallet,
-  ChartNoAxesCombined,
-  ShieldCheck,
-  History,
-  BookOpen,
+  ChevronDown,
   LogOut,
   Menu,
   X,
   ArrowUpRight,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useAuth, isAdmin, Login } from "./auth";
 import { Loading, Button, ErrorNotice, Notice, PageTitle } from "./ui";
 import { roleNames } from "./format";
@@ -56,7 +45,6 @@ import { benefitSpec, BenefitDetail } from "./Benefits";
 type NavItem = {
   path: string;
   label: string;
-  icon: LucideIcon;
   admin?: boolean;
   coordinator?: boolean;
   commercial?: boolean;
@@ -64,74 +52,99 @@ type NavItem = {
 };
 const groups: { label: string; items: NavItem[] }[] = [
   {
-    label: "ACOMPANHAMENTO",
+    label: "INDICADORES",
     items: [
-      { path: "/", label: "Visão geral", icon: LayoutDashboard },
-      { path: "/alunos", label: "Alunos", icon: UsersRound, admin: true },
+      { path: "/", label: "Visão geral" },
+      { path: "/relatorios", label: "Relatórios" },
+    ],
+  },
+  {
+    label: "PESSOAS E MATRÍCULAS",
+    items: [
+      { path: "/alunos", label: "Alunos", admin: true },
       {
         path: "/interessados",
         label: "Leads",
-        icon: ContactRound,
         commercial: true,
       },
+      { path: "/pessoas", label: "Pessoas", admin: true },
       {
         path: "/matriculas",
         label: "Matrículas",
-        icon: GraduationCap,
         admin: true,
       },
+      { path: "/revisao-contatos", label: "Revisão de contatos", admin: true },
     ],
   },
   {
     label: "ATIVIDADES",
     items: [
-      { path: "/turmas", label: "Turmas", icon: BookOpen, academic: true },
+      { path: "/turmas", label: "Turmas", academic: true },
       {
         path: "/aulas",
         label: "Aulas e chamada",
-        icon: CalendarDays,
         academic: true,
       },
-      { path: "/modalidades", label: "Modalidades", icon: Shapes, admin: true },
+      { path: "/modalidades", label: "Modalidades", admin: true },
       {
         path: "/instrutores",
         label: "Instrutores",
-        icon: ContactRound,
         admin: true,
       },
     ],
   },
   {
-    label: "GESTÃO",
+    label: "FINANCEIRO",
     items: [
-      { path: "/financeiro", label: "Financeiro", icon: Wallet, admin: true },
-      { path: "/ecowork", label: "EcoWork", icon: Wallet, admin: true },
-      { path: "/beneficios", label: "Bolsas e descontos", icon: Wallet, admin: true },
-      { path: "/pessoas", label: "Pessoas", icon: UsersRound, admin: true },
-      { path: "/revisao-contatos", label: "Revisão de contatos", icon: History, admin: true },
-      { path: "/relatorios", label: "Relatórios", icon: ChartNoAxesCombined },
+      { path: "/financeiro", label: "Financeiro", admin: true },
+      { path: "/beneficios", label: "Bolsas e descontos", admin: true },
+      { path: "/configuracoes-financeiras", label: "Tabelas financeiras", coordinator: true },
+      { path: "/acordos-repasse", label: "Acordos de repasse", coordinator: true },
+    ],
+  },
+  {
+    label: "ECOWORK",
+    items: [
+      { path: "/ecowork", label: "EcoWork", admin: true },
+      { path: "/catalogo-ecowork", label: "Catálogo EcoWork", coordinator: true },
+    ],
+  },
+  {
+    label: "ADMINISTRAÇÃO",
+    items: [
       {
         path: "/acessos",
         label: "Contas e perfis",
-        icon: ShieldCheck,
         coordinator: true,
       },
-      { path: "/configuracoes-financeiras", label: "Tabelas financeiras", icon: Wallet, coordinator: true },
-      { path: "/catalogo-ecowork", label: "Catálogo EcoWork", icon: Wallet, coordinator: true },
-      { path: "/acordos-repasse", label: "Acordos de repasse", icon: Wallet, coordinator: true },
-      { path: "/auditoria", label: "Histórico", icon: History, admin: true },
+      { path: "/auditoria", label: "Histórico", admin: true },
     ],
   },
 ];
+function groupForPath(pathname: string) {
+  if (/^\/(cobrancas|recebimentos)(\/|$)/.test(pathname)) return "FINANCEIRO";
+  return groups.find((group) => group.items.some((item) =>
+    item.path === "/" ? pathname === "/" : pathname === item.path || pathname.startsWith(`${item.path}/`),
+  ))?.label;
+}
 function Shell() {
   const { user, loading, logout } = useAuth();
+  const { pathname } = useLocation();
   const [navOpen, setNavOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<string[]>(() => {
+    const active = groupForPath(pathname);
+    return active ? [active] : [];
+  });
   const [error, setError] = useState<unknown>();
   const [leaving, setLeaving] = useState(false);
   const policies = useApi<Policies>(
     "policies/",
     user?.access_status === "approved" && !!user.roles.length,
   );
+  useEffect(() => {
+    const active = groupForPath(pathname);
+    if (active) setOpenGroups((open) => open.includes(active) ? open : [...open, active]);
+  }, [pathname]);
   if (loading) return <Loading />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.access_status !== "approved" || !user.roles.length)
@@ -187,7 +200,7 @@ function Shell() {
         </Link>
         <span className="workspace-label">ALUNOS · MATRÍCULAS · LEADS</span>
         <nav aria-label="Navegação principal">
-          {groups.map((group) => {
+          {groups.map((group, index) => {
             const visible = group.items
               .filter((item) => !item.admin || admin)
               .filter((item) => !item.coordinator || user.roles.includes("coordinator"))
@@ -202,7 +215,20 @@ function Shell() {
             return (
               visible.length > 0 && (
                 <div className="nav-group" key={group.label}>
-                  <p>{group.label}</p>
+                  <button
+                    type="button"
+                    className="nav-group__toggle"
+                    aria-expanded={openGroups.includes(group.label)}
+                    aria-controls={`nav-group-${index}`}
+                    onClick={() => setOpenGroups((open) => open.includes(group.label)
+                      ? open.filter((label) => label !== group.label)
+                      : [...open, group.label])}
+                  >
+                    {group.label}
+                    <ChevronDown size={16} aria-hidden="true" />
+                  </button>
+                  <div id={`nav-group-${index}`} className="nav-group__items" aria-hidden={!openGroups.includes(group.label)} inert={!openGroups.includes(group.label)}>
+                  <div className="nav-group__items-inner">
                   {visible.map((item) => (
                     <NavLink
                       end={item.path === "/"}
@@ -213,10 +239,11 @@ function Shell() {
                         isActive ? "nav-link nav-link--active" : "nav-link"
                       }
                     >
-                      <item.icon size={19} />
                       {item.label}
                     </NavLink>
                   ))}
+                  </div>
+                  </div>
                 </div>
               )
             );
@@ -287,7 +314,7 @@ function CommercialLeads({ detail = false }: { detail?: boolean }) {
   const { user } = useAuth();
   const spec = isAdmin(user) ? leadSpec : { ...leadSpec, readOnly: true, filterFields: [],
     fields: [...leadSpec.fields.filter((field) => ['name', 'email', 'phone', 'source', 'status'].includes(field.key)), { key: 'whatsapp', label: 'WhatsApp autorizado' }],
-    columns: [{ key: 'name', label: 'Lead' }, { key: 'email', label: 'E-mail autorizado' }, { key: 'phone', label: 'Telefone autorizado' }, { key: 'whatsapp', label: 'WhatsApp autorizado' }, { key: 'status', label: 'Situação' }] };
+    columns: [{ key: 'name', label: 'Lead' }, { key: 'email', label: 'E-mail autorizado' }, { key: 'phone', label: 'Telefone autorizado' }, { key: 'whatsapp', label: 'WhatsApp autorizado' }, ...leadSpec.columns.filter((column) => column.key === 'trial_status'), { key: 'status', label: 'Situação' }] };
   return detail ? <RecordDetail spec={spec} /> : <ResourceList spec={spec} />;
 }
 function AcademicGuard() {

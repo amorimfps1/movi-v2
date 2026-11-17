@@ -82,7 +82,7 @@ export const enrollmentFields: FieldSpec[] = [
   {
     key: "student",
     label: "Aluno",
-    type: "select",
+    type: "lookup",
     lookup: "students/",
     required: true,
     wide: true,
@@ -90,14 +90,14 @@ export const enrollmentFields: FieldSpec[] = [
   {
     key: "class_group",
     label: "Turma",
-    type: "select",
+    type: "lookup",
     lookup: "classes/",
     required: true,
     wide: true,
   },
-  { key: "source_lead", label: "Lead de origem (opcional)", type: "select", lookup: "leads/?status=converted", nullable: true, wide: true,
+  { key: "source_lead", label: "Lead de origem (opcional)", type: "lookup", lookup: "leads/?status=converted", nullable: true, wide: true,
     hint: "Selecione somente se este lead deu origem à contratação e estiver vinculado à pessoa escolhida." },
-  { key: 'benefit', label: 'Bolsa ou desconto aprovado (opcional)', type: 'select', lookup: 'benefits/?status=approved&scope=academic', nullable: true, wide: true,
+  { key: 'benefit', label: 'Bolsa ou desconto aprovado (opcional)', type: 'lookup', lookup: 'benefits/?status=approved&scope=academic', nullable: true, wide: true,
     optionLabel: row => `${String(row.person_name)} · ${String(row.value)}${row.kind === 'percent' ? '%' : ' reais'} · #${String(row.id)}` },
   {
     key: "start_date",
@@ -142,7 +142,7 @@ export const enrollmentSpec: ResourceSpec = {
   slug: "matriculas",
   endpoint: "enrollments/",
   filterFields: [
-    { key: "class_group", label: "Turma", type: "select", lookup: "classes/" },
+    { key: "class_group", label: "Turma", type: "lookup", lookup: "classes/" },
   ],
   description: "O vínculo com a turma e as condições de cada contrato.",
   editable: false,
@@ -201,7 +201,7 @@ export const leadSpec: ResourceSpec = {
     {
       key: "interests",
       label: "Interesse em modalidade",
-      type: "select",
+      type: "lookup",
       lookup: "modalities/",
     },
   ],
@@ -253,6 +253,7 @@ export const leadSpec: ResourceSpec = {
       ),
     },
     { key: "source", label: "Origem" },
+    { key: "trial_status", label: "Experimental", render: (row) => ({ scheduled: "Agendada", completed: "Realizada", cancelled: "Cancelada" }[String(row.trial_status)] || "Sem experimental") },
     {
       key: "status",
       label: "Acompanhamento",
@@ -260,6 +261,10 @@ export const leadSpec: ResourceSpec = {
     },
   ],
   filters: [
+    { key: "trial_status", label: "Experimental", options: [
+      { value: "scheduled", label: "Agendada" }, { value: "completed", label: "Realizada" },
+      { value: "cancelled", label: "Cancelada" }, { value: "none", label: "Sem experimental" },
+    ] },
     {
       key: "status",
       label: "Situação",
@@ -377,14 +382,14 @@ export const classSpec: ResourceSpec = {
     {
       key: "modality",
       label: "Modalidade",
-      type: "select",
+      type: "lookup",
       lookup: "modalities/",
       required: true,
     },
     {
       key: "instructor",
       label: "Instrutor responsável",
-      type: "select",
+      type: "lookup",
       lookup: "instructors/",
       required: true,
     },
@@ -473,7 +478,7 @@ export const lessonSpec: ResourceSpec = {
   endpoint: "lessons/",
   filterFields: [
     { key: "date", label: "Data da aula", type: "date" },
-    { key: "class_group", label: "Turma", type: "select", lookup: "classes/" },
+    { key: "class_group", label: "Turma", type: "lookup", lookup: "classes/" },
   ],
   description:
     "Cada encontro no calendário. Cada presença registrada com cuidado.",
@@ -481,7 +486,7 @@ export const lessonSpec: ResourceSpec = {
     {
       key: "class_group",
       label: "Turma",
-      type: "select",
+      type: "lookup",
       lookup: "classes/",
       required: true,
       wide: true,
@@ -496,7 +501,7 @@ export const lessonSpec: ResourceSpec = {
     {
       key: "assigned_instructor",
       label: "Substituto (opcional)",
-      type: "select",
+      type: "lookup",
       lookup: "instructors/",
       nullable: true,
       hint: "Sem substituto, o responsável é o instrutor da turma.",
@@ -538,7 +543,7 @@ export const chargeFields: FieldSpec[] = [
   {
     key: "enrollment",
     label: "Matrícula",
-    type: "select",
+    type: "lookup",
     lookup: "enrollments/",
     optionLabel: (row) =>
       `${row.student_name} · ${row.class_name} (#${row.id})`,

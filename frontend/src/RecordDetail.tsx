@@ -132,6 +132,7 @@ function RecordDetails({ spec, id }: { spec: ResourceSpec; id: string }) {
             )}
           </div>
           <dl className="details-list">
+            {spec.endpoint === "people/" && !!row.has_guardianships && <div><dt>Categoria</dt><dd>Responsável</dd></div>}
             {spec.fields.map((field) => (
               <div key={field.key}>
                 <dt>{field.label.replace(" (R$)", "")}</dt>
@@ -152,6 +153,17 @@ function RecordDetails({ spec, id }: { spec: ResourceSpec; id: string }) {
         <div>
           {spec.endpoint === "people/" && <PersonOverview id={id} />}
           <EcoWorkActions endpoint={spec.endpoint} row={row} />
+          {spec.endpoint === "leads/" && !!row.trial_info && (() => {
+            const trial = row.trial_info as { lesson: number; class_name: string; date: string; status: string };
+            return <section className="sheet lead-trial-detail">
+              <div className="section-heading"><h2>Aula experimental</h2></div>
+              <dl className="details-list">
+                <div><dt>Turma</dt><dd>{admin ? <Link to={`/aulas/${trial.lesson}`}>{trial.class_name}</Link> : trial.class_name}</dd></div>
+                <div><dt>Data</dt><dd>{date(trial.date)}</dd></div>
+                <div><dt>Situação</dt><dd>{{ scheduled: 'Agendada', completed: 'Realizada', cancelled: 'Cancelada' }[trial.status] || trial.status}</dd></div>
+              </dl>
+            </section>;
+          })()}
           {spec.endpoint === "leads/" && admin && (
             <section className="sheet">
               <div className="section-heading">
